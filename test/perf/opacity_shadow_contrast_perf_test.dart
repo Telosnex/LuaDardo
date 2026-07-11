@@ -142,17 +142,19 @@ Future<void> main() async {
     implementation1: (script) {
       Instructions.useDirectArithmetic = true;
       Arithmetic.useNumericFastPath = true;
-      Instructions.useDirectTableGet = false;
+      Instructions.useDirectTableGet = true;
+      Instructions.useDirectComparison = false;
       return _runScript(script);
     },
     implementation2: (script) {
       Instructions.useDirectArithmetic = true;
       Arithmetic.useNumericFastPath = true;
       Instructions.useDirectTableGet = true;
+      Instructions.useDirectComparison = true;
       return _runScript(script);
     },
-    impl1Name: 'Numeric fast path',
-    impl2Name: 'Direct table get',
+    impl1Name: 'Direct table get',
+    impl2Name: 'Direct comparison',
   );
 
   await tester.run(

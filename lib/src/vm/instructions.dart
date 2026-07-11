@@ -8,6 +8,7 @@ class Instructions {
   /// Enables direct register arithmetic. Switchable for benchmark baselines.
   static bool useDirectArithmetic = true;
   static bool useDirectTableGet = true;
+  static bool useDirectComparison = true;
 
   /// number of list items to accumulate before a SETLIST instruction
   static final int lfields_per_flush = 50;
@@ -173,6 +174,12 @@ class Instructions {
     int a = Instruction.getA(i);
     int b = Instruction.getB(i);
     int c = Instruction.getC(i);
+    if (useDirectComparison) {
+      if (vm.compareRK(b, c, op) != (a != 0)) {
+        vm.addPC(1);
+      }
+      return;
+    }
     vm.getRK(b);
     vm.getRK(c);
     if (vm.compare(-2, -1, op) != (a != 0)) {

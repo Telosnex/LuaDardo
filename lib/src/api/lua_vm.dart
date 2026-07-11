@@ -19,6 +19,9 @@ abstract class LuaVM extends LuaState {
   /// Executes `R(dest) = R(table)[RK(key)]` directly on VM registers.
   void getTableRK(int dest, int table, int key);
 
+  /// Compares two RK operands without copying them to the VM stack.
+  bool compareRK(int left, int right, CmpOp op);
+
   int registerCount();
 
   void loadVararg(int n);

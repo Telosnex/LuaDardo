@@ -1647,6 +1647,22 @@ class LuaStateImpl implements LuaState, LuaVM {
   }
 
   @override
+  bool compareRK(int left, int right, CmpOp op) {
+    final stack = _stack!;
+    final constants = stack.closure!.proto!.constants;
+    final a = left > 0xFF ? constants[left & 0xFF] : stack.slots[left];
+    final b = right > 0xFF ? constants[right & 0xFF] : stack.slots[right];
+    switch (op) {
+      case CmpOp.luaOpEq:
+        return Comparison.eq(a, b, this);
+      case CmpOp.luaOpLt:
+        return Comparison.lt(a, b, this);
+      case CmpOp.luaOpLe:
+        return Comparison.le(a, b, this);
+    }
+  }
+
+  @override
   void getTableRK(int dest, int table, int key) {
     final stack = _stack!;
     final slots = stack.slots;
