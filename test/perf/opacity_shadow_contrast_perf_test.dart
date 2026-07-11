@@ -7,6 +7,7 @@
 //   dart run --enable-vm-service test/perf/opacity_shadow_contrast_perf_test.dart
 
 import 'package:lua_dardo_plus/lua.dart';
+import 'package:lua_dardo_plus/src/compiler/compiler.dart';
 import 'package:lua_dardo_plus/src/state/arithmetic.dart';
 import 'package:lua_dardo_plus/src/state/lua_state_impl.dart';
 import 'package:lua_dardo_plus/src/vm/instructions.dart';
@@ -153,10 +154,11 @@ Future<void> main() async {
       LuaStateImpl.useRegisterExecution = true;
       LuaStateImpl.useRegisterCalls = true;
       LuaStateImpl.useInlineRegisterFastPaths = true;
+      Compiler.useExpressionInlining = false;
       LuaStateImpl.useOpenResultRegisterCalls = true;
       LuaStateImpl.useExtendedRegisterFastPaths = true;
       LuaStateImpl.useRegisterCallFramePool = true;
-      LuaStateImpl.useIterativeRegisterCalls = false;
+      LuaStateImpl.useIterativeRegisterCalls = true;
       return _runScript(script);
     },
     implementation2: (script) {
@@ -171,14 +173,15 @@ Future<void> main() async {
       LuaStateImpl.useRegisterExecution = true;
       LuaStateImpl.useRegisterCalls = true;
       LuaStateImpl.useInlineRegisterFastPaths = true;
+      Compiler.useExpressionInlining = true;
       LuaStateImpl.useOpenResultRegisterCalls = true;
       LuaStateImpl.useExtendedRegisterFastPaths = true;
       LuaStateImpl.useRegisterCallFramePool = true;
       LuaStateImpl.useIterativeRegisterCalls = true;
       return _runScript(script);
     },
-    impl1Name: 'Recursive register calls',
-    impl2Name: 'Iterative register calls',
+    impl1Name: 'Register dispatch',
+    impl2Name: 'AST closure inlining',
   );
 
   await tester.run(
@@ -188,4 +191,17 @@ Future<void> main() async {
     profileRuns: 1,
     profileTopN: 40,
   );
+
+  // Collect dynamic instruction frequencies separately so profiling counters
+  // never affect the timed comparison above.
+  LuaStateImpl.useIterativeRegisterCalls = true;
+  Compiler.useExpressionInlining = true;
+  LuaStateImpl.resetRegisterOpcodeProfile();
+  LuaStateImpl.collectRegisterOpcodeProfile = true;
+  try {
+    _runScript(_workload);
+  } finally {
+    LuaStateImpl.collectRegisterOpcodeProfile = false;
+  }
+  print('\n${LuaStateImpl.registerOpcodeProfileReport()}');
 }

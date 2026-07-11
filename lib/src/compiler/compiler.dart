@@ -1,12 +1,16 @@
 import '../binchunk/binary_chunk.dart';
 import 'ast/block.dart';
+import 'ast_inliner.dart';
 import 'codegen/code_gen.dart';
 import 'parser/parser.dart';
 
 class Compiler {
+  /// Inlines conservative single-expression local functions before codegen.
+  static bool useExpressionInlining = true;
 
   static Prototype compile(String chunk, String chunkName) {
     Block ast = Parser.parse(chunk, chunkName);
+    if (useExpressionInlining) ast = AstInliner.optimize(ast);
     Prototype proto = CodeGen.genProto(ast);
     _setSource(proto, chunkName);
     return proto;
@@ -18,5 +22,4 @@ class Compiler {
       _setSource(subProto!, chunkName);
     }
   }
-
 }

@@ -76,6 +76,62 @@ class LuaStateImpl implements LuaState, LuaVM {
   /// recursively entering [_runLuaClosure] for every Lua frame.
   static bool useIterativeRegisterCalls = true;
 
+  /// Collects dynamic opcode and adjacent-opcode frequencies in the register
+  /// interpreter. Disabled by default because the per-instruction counters are
+  /// intentionally diagnostic rather than benchmark overhead.
+  static bool collectRegisterOpcodeProfile = false;
+  static final List<int> _registerOpcodeCounts =
+      List<int>.filled(opCodes.length, 0);
+  static final List<int> _registerOpcodePairCounts =
+      List<int>.filled(opCodes.length * opCodes.length, 0);
+
+  /// Clears all register-interpreter opcode profiling counters.
+  static void resetRegisterOpcodeProfile() {
+    _registerOpcodeCounts.fillRange(0, _registerOpcodeCounts.length, 0);
+    _registerOpcodePairCounts.fillRange(0, _registerOpcodePairCounts.length, 0);
+  }
+
+  /// Formats the most frequent dynamic opcodes and adjacent opcode pairs.
+  static String registerOpcodeProfileReport({int top = 20}) {
+    String formatCount(int count, int total) =>
+        '${count.toString().padLeft(12)}  ${(count * 100 / total).toStringAsFixed(2).padLeft(6)}%';
+
+    final total = _registerOpcodeCounts.fold<int>(0, (sum, n) => sum + n);
+    if (total == 0) return 'Register opcode profile: no samples';
+    final opcodeOrder = List<int>.generate(opCodes.length, (i) => i)
+      ..sort((a, b) =>
+          _registerOpcodeCounts[b].compareTo(_registerOpcodeCounts[a]));
+    final pairOrder = List<int>.generate(
+        _registerOpcodePairCounts.length, (i) => i)
+      ..sort((a, b) =>
+          _registerOpcodePairCounts[b].compareTo(_registerOpcodePairCounts[a]));
+    final pairTotal =
+        _registerOpcodePairCounts.fold<int>(0, (sum, n) => sum + n);
+    final limit = math.min(top, opCodes.length);
+    final pairLimit = math.min(top, pairOrder.length);
+    final out = StringBuffer('Register opcode profile ($total instructions)\n')
+      ..writeln('Opcodes:');
+    for (int rank = 0; rank < limit; rank++) {
+      final opcode = opcodeOrder[rank];
+      final count = _registerOpcodeCounts[opcode];
+      if (count == 0) break;
+      out.writeln(
+          '  ${opCodes[opcode].name.padRight(12)} ${formatCount(count, total)}');
+    }
+    out.writeln('Adjacent pairs:');
+    for (int rank = 0; rank < pairLimit; rank++) {
+      final pair = pairOrder[rank];
+      final count = _registerOpcodePairCounts[pair];
+      if (count == 0) break;
+      final first = pair ~/ opCodes.length;
+      final second = pair % opCodes.length;
+      out.writeln(
+          '  ${(opCodes[first].name + ' → ' + opCodes[second].name).padRight(25)} '
+          '${formatCount(count, pairTotal)}');
+    }
+    return out.toString().trimRight();
+  }
+
   /// Controls the stack representation.
   ///
   /// When `true` (default), [LuaStack] uses a fixed-capacity array with an
@@ -98,6 +154,7 @@ class LuaStateImpl implements LuaState, LuaVM {
 
   LuaStack? _stack = _newStack();
   final List<LuaStack> _registerCallFrames = <LuaStack>[];
+  int _registerProfilePreviousOpcode = -1;
 
   LuaStack _acquireRegisterCallFrame(int capacity) {
     if (useRegisterCallFramePool) {
@@ -933,7 +990,6 @@ class LuaStateImpl implements LuaState, LuaVM {
     final value = caller.slots[base];
     if (value is! Closure) return 0;
     final destination = resultBase ?? base;
-
     final callee = _acquireRegisterCallFrame(
         value.proto == null ? 40 : value.proto!.maxStackSize + 20);
     callee.state = this;
@@ -1040,6 +1096,14 @@ class LuaStateImpl implements LuaState, LuaVM {
       for (;;) {
         final inst = code[pc++];
         final opcode = inst & 0x3F;
+        if (collectRegisterOpcodeProfile) {
+          _registerOpcodeCounts[opcode]++;
+          final previous = _registerProfilePreviousOpcode;
+          if (previous >= 0) {
+            _registerOpcodePairCounts[previous * opCodes.length + opcode]++;
+          }
+          _registerProfilePreviousOpcode = opcode;
+        }
         final a = (inst >> 6) & 0xFF;
         final b = (inst >> 23) & 0x1FF;
         final c = (inst >> 14) & 0x1FF;
