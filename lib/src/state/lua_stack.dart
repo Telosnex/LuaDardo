@@ -52,6 +52,28 @@ class LuaStack {
 
   int top() => _fixed ? _top : slots.length;
 
+  /// Prepares a completed fixed stack for use as a fresh call frame.
+  /// Slots are overwritten by argument setup and [setTopDirect], avoiding an
+  /// otherwise redundant clearing pass while the frame is pooled.
+  void prepareForCallReuse() {
+    _top = 0;
+    closure = null;
+    varargs = null;
+    openuvs = null;
+    pc = 0;
+    prev = null;
+  }
+
+  /// Reserves an argument range whose slots will immediately be overwritten.
+  void reserveCallArguments(int count) {
+    if (_fixed) {
+      if (count > slots.length) _grow(count);
+      _top = count;
+    } else {
+      setTopDirect(count);
+    }
+  }
+
   // ── Core push / pop ──────────────────────────────────────────────────
 
   void push(Object? val) {
