@@ -147,7 +147,11 @@ Future<void> main() async {
       Instructions.useDirectTableGet = true;
       Instructions.useDirectComparison = true;
       LuaStateImpl.useDirectCallTransfer = true;
-      LuaStateImpl.useDirectResultTransfer = false;
+      LuaStateImpl.useDirectResultTransfer = true;
+      Instructions.useDirectSetList = true;
+      Instructions.useDirectTableSet = true;
+      LuaStateImpl.useRegisterExecution = true;
+      LuaStateImpl.useRegisterCalls = false;
       return _runScript(script);
     },
     implementation2: (script) {
@@ -157,15 +161,19 @@ Future<void> main() async {
       Instructions.useDirectComparison = true;
       LuaStateImpl.useDirectCallTransfer = true;
       LuaStateImpl.useDirectResultTransfer = true;
+      Instructions.useDirectSetList = true;
+      Instructions.useDirectTableSet = true;
+      LuaStateImpl.useRegisterExecution = true;
+      LuaStateImpl.useRegisterCalls = true;
       return _runScript(script);
     },
-    impl1Name: 'Direct call transfer',
-    impl2Name: 'Direct result transfer',
+    impl1Name: 'Register executor',
+    impl2Name: 'Register calls',
   );
 
   await tester.run(
     warmupRuns: 1,
-    benchmarkRuns: 5,
+    benchmarkRuns: 2,
     profile: true,
     profileRuns: 1,
     profileTopN: 40,

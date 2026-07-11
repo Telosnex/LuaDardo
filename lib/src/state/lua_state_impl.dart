@@ -51,6 +51,13 @@ class LuaStateImpl implements LuaState, LuaVM {
   /// instruction — only once per [_runLuaClosure] invocation.
   static bool useSwitchDispatch = false;
 
+  /// Executes common bytecodes against a cached register frame, bypassing the
+  /// public stack API and the per-opcode LuaVM dispatch layer.
+  static bool useRegisterExecution = true;
+
+  /// Transfers fixed-arity calls directly between register frames.
+  static bool useRegisterCalls = true;
+
   /// Controls the stack representation.
   ///
   /// When `true` (default), [LuaStack] uses a fixed-capacity array with an
@@ -725,6 +732,11 @@ class LuaStateImpl implements LuaState, LuaVM {
   }
 
   void _runLuaClosure() {
+    if (useRegisterExecution) {
+      _runRegisterClosure();
+      return;
+    }
+
     // Optimised dispatch loop that replaces the original triple overhead
     // (array lookup → indirect Function.call → string comparison) with a
     // single `switch` on the raw 6-bit opcode. ~10% perf win.
@@ -871,6 +883,215 @@ class LuaStateImpl implements LuaState, LuaVM {
           break;
         case 46:
           break; // EXTRAARG — consumed by preceding instruction
+      }
+    }
+  }
+
+  /// Calls a closure from a fixed register range and writes fixed-count
+  /// results back without staging function, arguments, and results above the
+  /// caller's register window.
+  bool _callFixedRegisters(LuaStack caller, int base, int nArgs, int nResults) {
+    final value = caller.slots[base];
+    if (value is! Closure) return false;
+
+    final callee =
+        _newStack(value.proto == null ? 40 : value.proto!.maxStackSize + 20);
+    callee.state = this;
+    callee.closure = value;
+
+    if (value.proto != null) {
+      final proto = value.proto!;
+      final nParams = proto.numParams!;
+      for (int i = 0; i < nParams; i++) {
+        callee.push(i < nArgs ? caller.slots[base + i + 1] : null);
+      }
+      if (proto.isVararg == 1 && nArgs > nParams) {
+        callee.varargs = List<Object?>.generate(
+          nArgs - nParams,
+          (i) => caller.slots[base + nParams + i + 1],
+          growable: false,
+        );
+      }
+
+      _pushLuaStack(callee);
+      setTop(proto.maxStackSize);
+      _runLuaClosure();
+      _popLuaStack();
+
+      final available = callee.top() - proto.maxStackSize;
+      for (int i = 0; i < nResults; i++) {
+        caller.slots[base + i] =
+            i < available ? callee.slots[proto.maxStackSize + i] : null;
+      }
+    } else {
+      for (int i = 0; i < nArgs; i++) {
+        callee.push(caller.slots[base + i + 1]);
+      }
+      _pushLuaStack(callee);
+      final resultCount = value.dartFunc!.call(this);
+      _popLuaStack();
+
+      final resultStart = callee.top() - resultCount;
+      for (int i = 0; i < nResults; i++) {
+        caller.slots[base + i] =
+            i < resultCount ? callee.slots[resultStart + i] : null;
+      }
+    }
+    return true;
+  }
+
+  /// Register-oriented execution tier for common bytecodes. Less common and
+  /// semantically complex operations continue through their shared handlers.
+  void _runRegisterClosure() {
+    final stack = _stack!;
+    // Complex handlers can grow the frame and replace its backing array, so
+    // refresh this cache after every fallback through the stack API.
+    var slots = stack.slots;
+    final proto = stack.closure!.proto!;
+    final code = proto.code;
+    final constants = proto.constants;
+
+    Object? rk(int operand) =>
+        operand > 0xFF ? constants[operand & 0xFF] : slots[operand];
+
+    for (;;) {
+      final inst = code[stack.pc++];
+      final opcode = inst & 0x3F;
+      final a = (inst >> 6) & 0xFF;
+      switch (opcode) {
+        case 0: // MOVE
+          slots[a] = slots[(inst >> 23) & 0x1FF];
+          break;
+        case 1: // LOADK
+          slots[a] = constants[inst >> 14];
+          break;
+        case 3: // LOADBOOL
+          slots[a] = ((inst >> 23) & 0x1FF) != 0;
+          if (((inst >> 14) & 0x1FF) != 0) stack.pc++;
+          break;
+        case 4: // LOADNIL
+          final end = a + ((inst >> 23) & 0x1FF);
+          for (int register = a; register <= end; register++) {
+            slots[register] = null;
+          }
+          break;
+        case 7: // GETTABLE
+          getTableRK(a + 1, ((inst >> 23) & 0x1FF) + 1, (inst >> 14) & 0x1FF);
+          slots = stack.slots;
+          break;
+        case 10: // SETTABLE
+          setTableRK(a + 1, (inst >> 23) & 0x1FF, (inst >> 14) & 0x1FF);
+          slots = stack.slots;
+          break;
+        case >= 13 && <= 24: // binary arithmetic
+          const operations = <ArithOp>[
+            ArithOp.luaOpAdd,
+            ArithOp.luaOpSub,
+            ArithOp.luaOpMul,
+            ArithOp.luaOpMod,
+            ArithOp.luaOpPow,
+            ArithOp.luaOpDiv,
+            ArithOp.luaOpIdiv,
+            ArithOp.luaOpBand,
+            ArithOp.luaOpBor,
+            ArithOp.luaOpBxor,
+            ArithOp.luaOpShl,
+            ArithOp.luaOpShr,
+          ];
+          final leftOperand = (inst >> 23) & 0x1FF;
+          final rightOperand = (inst >> 14) & 0x1FF;
+          final result = Arithmetic.arith(
+              rk(leftOperand), rk(rightOperand), operations[opcode - 13], this);
+          slots = stack.slots;
+          slots[a] = result;
+          break;
+        case 27: // NOT
+          slots[a] = !LuaValue.toBoolean(slots[(inst >> 23) & 0x1FF]);
+          break;
+        case 30: // JMP
+          final close = a;
+          if (close != 0) {
+            closeUpvalues(close);
+          }
+          stack.pc += (inst >> 14) - Instruction.maxArg_sbx;
+          break;
+        case >= 31 && <= 33: // EQ, LT, LE
+          final leftOperand = (inst >> 23) & 0x1FF;
+          final rightOperand = (inst >> 14) & 0x1FF;
+          final expected = a != 0;
+          final result = switch (opcode) {
+            31 => Comparison.eq(rk(leftOperand), rk(rightOperand), this),
+            32 => Comparison.lt(rk(leftOperand), rk(rightOperand), this),
+            _ => Comparison.le(rk(leftOperand), rk(rightOperand), this),
+          };
+          slots = stack.slots;
+          if (result != expected) stack.pc++;
+          break;
+        case 34: // TEST
+          if (LuaValue.toBoolean(slots[a]) != (((inst >> 14) & 0x1FF) != 0)) {
+            stack.pc++;
+          }
+          break;
+        case 35: // TESTSET
+          final source = (inst >> 23) & 0x1FF;
+          if (LuaValue.toBoolean(slots[source]) ==
+              (((inst >> 14) & 0x1FF) != 0)) {
+            slots[a] = slots[source];
+          } else {
+            stack.pc++;
+          }
+          break;
+        case 36: // CALL
+          final argumentField = (inst >> 23) & 0x1FF;
+          final resultField = (inst >> 14) & 0x1FF;
+          if (useRegisterCalls &&
+              argumentField > 0 &&
+              resultField > 0 &&
+              _callFixedRegisters(
+                  stack, a, argumentField - 1, resultField - 1)) {
+            slots = stack.slots;
+          } else {
+            Instructions.call(inst, this);
+            slots = stack.slots;
+          }
+          break;
+        case 39: // FORLOOP
+          final step = slots[a + 2] as num;
+          final next =
+              Arithmetic.arith(slots[a], step, ArithOp.luaOpAdd, this) as num;
+          slots[a] = next;
+          final limit = slots[a + 1] as num;
+          if ((step >= 0 && next <= limit) || (step < 0 && next >= limit)) {
+            stack.pc += (inst >> 14) - Instruction.maxArg_sbx;
+            slots[a + 3] = next;
+          }
+          break;
+        case 40: // FORPREP
+          Object? initial = slots[a];
+          Object? limit = slots[a + 1];
+          Object? step = slots[a + 2];
+          if (initial is String) initial = LuaValue.toFloat(initial);
+          if (limit is String) limit = LuaValue.toFloat(limit);
+          if (step is String) step = LuaValue.toFloat(step);
+          slots[a] = Arithmetic.arith(initial, step, ArithOp.luaOpSub, this);
+          slots[a + 1] = limit;
+          slots[a + 2] = step;
+          stack.pc += (inst >> 14) - Instruction.maxArg_sbx;
+          break;
+        case 42: // TFORLOOP
+          if (slots[a + 1] != null) {
+            slots[a] = slots[a + 1];
+            stack.pc += (inst >> 14) - Instruction.maxArg_sbx;
+          }
+          break;
+        case 38: // RETURN
+          Instructions.return_(inst, this);
+          return;
+        case 46: // EXTRAARG
+          break;
+        default:
+          opCodes[opcode].action!(inst, this);
+          slots = stack.slots;
       }
     }
   }
@@ -1660,6 +1881,15 @@ class LuaStateImpl implements LuaState, LuaVM {
   }
 
   @override
+  void setListRegisters(int table, int count, int startIndex) {
+    final slots = _stack!.slots;
+    final target = slots[table - 1] as LuaTable;
+    for (int i = 1; i <= count; i++) {
+      target.put(startIndex + i, slots[table + i - 1]);
+    }
+  }
+
+  @override
   bool compareRK(int left, int right, CmpOp op) {
     final stack = _stack!;
     final constants = stack.closure!.proto!.constants;
@@ -1673,6 +1903,23 @@ class LuaStateImpl implements LuaState, LuaVM {
       case CmpOp.luaOpLe:
         return Comparison.le(a, b, this);
     }
+  }
+
+  @override
+  void setTableRK(int table, int key, int value) {
+    final stack = _stack!;
+    final slots = stack.slots;
+    final constants = stack.closure!.proto!.constants;
+    final target = slots[table - 1];
+    final k = key > 0xFF ? constants[key & 0xFF] : slots[key];
+    final v = value > 0xFF ? constants[value & 0xFF] : slots[value];
+
+    if (target is LuaTable &&
+        (target.get(k) != null || !target.hasMetafield('__newindex'))) {
+      target.put(k, v);
+      return;
+    }
+    _setTable(target, k, v, false);
   }
 
   @override
