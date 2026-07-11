@@ -1633,6 +1633,20 @@ class LuaStateImpl implements LuaState, LuaVM {
   }
 
   @override
+  void binaryArithRK(int dest, int b, int c, ArithOp op) {
+    final stack = _stack!;
+    final constants = stack.closure!.proto!.constants;
+    final left = b > 0xFF ? constants[b & 0xFF] : stack.slots[b];
+    final right = c > 0xFF ? constants[c & 0xFF] : stack.slots[c];
+    final result = Arithmetic.arith(left, right, op, this);
+    if (result == null) {
+      throw Exception(stack
+          .formatError('attempt to perform arithmetic on a non-number value'));
+    }
+    stack.slots[dest - 1] = result;
+  }
+
+  @override
   void loadProto(int idx) {
     Prototype proto = _stack!.closure!.proto!.protos[idx]!;
     Closure closure = Closure(proto);
@@ -1864,9 +1878,8 @@ class LuaStateImpl implements LuaState, LuaVM {
         final rawSource = stack.closure!.proto?.source;
         // Apply luaO_chunkid-style truncation so frame labels don't embed
         // the entire script source (e.g. for chunks loaded via loadString).
-        final funcName = rawSource == null
-            ? '<dart function>'
-            : LuaStack.chunkid(rawSource);
+        final funcName =
+            rawSource == null ? '<dart function>' : LuaStack.chunkid(rawSource);
         int line = stack.pc > 0 && stack.closure!.proto != null
             ? (stack.closure!.proto!.lineInfo.isNotEmpty
                 ? stack.closure!.proto!.lineInfo[stack.pc - 1]

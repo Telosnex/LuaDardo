@@ -5,6 +5,9 @@ import 'fpb.dart';
 import 'instruction.dart';
 
 class Instructions {
+  /// Enables direct register arithmetic. Switchable for benchmark baselines.
+  static bool useDirectArithmetic = true;
+
   /// number of list items to accumulate before a SETLIST instruction
   static final int lfields_per_flush = 50;
 
@@ -131,6 +134,10 @@ class Instructions {
     int a = Instruction.getA(i) + 1;
     int b = Instruction.getB(i);
     int c = Instruction.getC(i);
+    if (useDirectArithmetic) {
+      vm.binaryArithRK(a, b, c, op);
+      return;
+    }
     vm.getRK(b);
     vm.getRK(c);
     vm.arith(op);
