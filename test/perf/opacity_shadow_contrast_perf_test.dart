@@ -8,6 +8,7 @@
 
 import 'package:lua_dardo_plus/lua.dart';
 import 'package:lua_dardo_plus/src/state/arithmetic.dart';
+import 'package:lua_dardo_plus/src/state/lua_state_impl.dart';
 import 'package:lua_dardo_plus/src/vm/instructions.dart';
 
 import 'perf_tester.dart';
@@ -90,8 +91,9 @@ local gens={
 local fsz,esz={},{ }
 local diffs,worse=0,0
 local nt=0
--- Original: 0..899. Six trials retain both algorithms and all generators.
-for t=0,5 do
+-- Original: 0..899. Twelve trials retain both algorithms and give each
+-- algorithm/generator pairing two samples without making profiling unwieldy.
+for t=0,11 do
   local names={"uniform","gradient","huesweep"}
   local gname=names[(t%3)+1]
   local algo=(t%2==1) and ALGOS.apca or ALGOS.wcag
@@ -143,7 +145,9 @@ Future<void> main() async {
       Instructions.useDirectArithmetic = true;
       Arithmetic.useNumericFastPath = true;
       Instructions.useDirectTableGet = true;
-      Instructions.useDirectComparison = false;
+      Instructions.useDirectComparison = true;
+      LuaStateImpl.useDirectCallTransfer = true;
+      LuaStateImpl.useDirectResultTransfer = false;
       return _runScript(script);
     },
     implementation2: (script) {
@@ -151,15 +155,17 @@ Future<void> main() async {
       Arithmetic.useNumericFastPath = true;
       Instructions.useDirectTableGet = true;
       Instructions.useDirectComparison = true;
+      LuaStateImpl.useDirectCallTransfer = true;
+      LuaStateImpl.useDirectResultTransfer = true;
       return _runScript(script);
     },
-    impl1Name: 'Direct table get',
-    impl2Name: 'Direct comparison',
+    impl1Name: 'Direct call transfer',
+    impl2Name: 'Direct result transfer',
   );
 
   await tester.run(
     warmupRuns: 1,
-    benchmarkRuns: 3,
+    benchmarkRuns: 5,
     profile: true,
     profileRuns: 1,
     profileTopN: 40,

@@ -60,6 +60,12 @@ class LuaStateImpl implements LuaState, LuaVM {
   /// baseline).
   static bool useFixedStack = true;
 
+  /// Copies Lua-call arguments directly between fixed stack frames.
+  static bool useDirectCallTransfer = true;
+
+  /// Copies Lua return values directly between fixed stack frames.
+  static bool useDirectResultTransfer = true;
+
   /// Creates a [LuaStack] respecting the current [useFixedStack] flag.
   static LuaStack _newStack([int capacity = 40]) {
     return useFixedStack ? LuaStack(capacity) : LuaStack.growable();
@@ -665,11 +671,15 @@ class LuaStateImpl implements LuaState, LuaVM {
     newStack.state = this;
     newStack.closure = c;
 
-    // pass args, pop func
-    List<Object?> funcAndArgs = _stack!.popN(nArgs + 1);
-    newStack.pushN(funcAndArgs.sublist(1, funcAndArgs.length), nParams);
-    if (nArgs > nParams && isVararg) {
-      newStack.varargs = funcAndArgs.sublist(nParams + 1, funcAndArgs.length);
+    // Pass args and remove the function from the caller frame.
+    if (useDirectCallTransfer) {
+      _stack!.transferCallTo(newStack, nArgs, nParams, isVararg);
+    } else {
+      List<Object?> funcAndArgs = _stack!.popN(nArgs + 1);
+      newStack.pushN(funcAndArgs.sublist(1, funcAndArgs.length), nParams);
+      if (nArgs > nParams && isVararg) {
+        newStack.varargs = funcAndArgs.sublist(nParams + 1, funcAndArgs.length);
+      }
     }
 
     // run closure
@@ -678,11 +688,14 @@ class LuaStateImpl implements LuaState, LuaVM {
     _runLuaClosure();
     _popLuaStack();
 
-    // return results
+    // Return results to the caller frame.
     if (nResults != 0) {
-      List<Object?> results = newStack.popN(newStack.top() - nRegs);
-      //stack.check(results.size())
-      _stack!.pushN(results, nResults);
+      if (useDirectResultTransfer) {
+        newStack.transferResultsTo(_stack!, nRegs, nResults);
+      } else {
+        List<Object?> results = newStack.popN(newStack.top() - nRegs);
+        _stack!.pushN(results, nResults);
+      }
     }
   }
 

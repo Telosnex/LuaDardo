@@ -90,6 +90,62 @@ class LuaStack {
     }
   }
 
+  /// Removes a function and its arguments from this stack and copies the
+  /// parameters directly into [callee]. This avoids temporary `popN` and
+  /// `sublist` allocations for every Lua-to-Lua call.
+  void transferCallTo(
+    LuaStack callee,
+    int nArgs,
+    int nParams,
+    bool isVararg,
+  ) {
+    if (!_fixed || !callee._fixed) {
+      final funcAndArgs = popN(nArgs + 1);
+      callee.pushN(funcAndArgs.sublist(1), nParams);
+      if (nArgs > nParams && isVararg) {
+        callee.varargs = funcAndArgs.sublist(nParams + 1);
+      }
+      return;
+    }
+
+    final argsStart = _top - nArgs;
+    for (int i = 0; i < nParams; i++) {
+      callee.push(i < nArgs ? slots[argsStart + i] : null);
+    }
+    if (nArgs > nParams && isVararg) {
+      callee.varargs = List<Object?>.generate(
+        nArgs - nParams,
+        (i) => slots[argsStart + nParams + i],
+        growable: false,
+      );
+    }
+
+    final functionIndex = argsStart - 1;
+    for (int i = functionIndex; i < _top; i++) {
+      slots[i] = null;
+    }
+    _top = functionIndex;
+  }
+
+  /// Copies return values above [registerCount] directly to [caller].
+  void transferResultsTo(
+    LuaStack caller,
+    int registerCount,
+    int nResults,
+  ) {
+    if (!_fixed || !caller._fixed) {
+      final results = popN(top() - registerCount);
+      caller.pushN(results, nResults);
+      return;
+    }
+
+    final available = _top - registerCount;
+    final count = nResults < 0 ? available : nResults;
+    for (int i = 0; i < count; i++) {
+      caller.push(i < available ? slots[registerCount + i] : null);
+    }
+  }
+
   List<Object?> popN(int n) {
     if (_fixed) {
       // Single allocation, filled back-to-front — no reversal needed.
@@ -253,7 +309,9 @@ class LuaStack {
   /// Returns the line number corresponding to the current instruction (pc),
   /// or null if line info is not available.
   int? getCurrentLine() {
-    if (closure?.proto != null && pc > 0 && pc <= closure!.proto!.lineInfo.length) {
+    if (closure?.proto != null &&
+        pc > 0 &&
+        pc <= closure!.proto!.lineInfo.length) {
       return closure!.proto!.lineInfo[pc - 1];
     }
     return null;
