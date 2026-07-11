@@ -154,8 +154,9 @@ Future<void> main() async {
       LuaStateImpl.useRegisterCalls = true;
       LuaStateImpl.useInlineRegisterFastPaths = true;
       LuaStateImpl.useOpenResultRegisterCalls = true;
-      LuaStateImpl.useExtendedRegisterFastPaths = false;
-      LuaStateImpl.useRegisterCallFramePool = false;
+      LuaStateImpl.useExtendedRegisterFastPaths = true;
+      LuaStateImpl.useRegisterCallFramePool = true;
+      LuaStateImpl.useIterativeRegisterCalls = false;
       return _runScript(script);
     },
     implementation2: (script) {
@@ -173,10 +174,11 @@ Future<void> main() async {
       LuaStateImpl.useOpenResultRegisterCalls = true;
       LuaStateImpl.useExtendedRegisterFastPaths = true;
       LuaStateImpl.useRegisterCallFramePool = true;
+      LuaStateImpl.useIterativeRegisterCalls = true;
       return _runScript(script);
     },
-    impl1Name: 'Open-result register calls',
-    impl2Name: 'Register hot paths + frame pool',
+    impl1Name: 'Recursive register calls',
+    impl2Name: 'Iterative register calls',
   );
 
   await tester.run(

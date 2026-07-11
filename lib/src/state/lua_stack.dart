@@ -31,6 +31,10 @@ class LuaStack {
   /// linked list
   LuaStack? prev;
 
+  // Direct-register continuation for an iteratively executed Lua call.
+  int registerReturnDestination = -1;
+  int registerReturnCount = 0;
+
   /// Creates a fixed-capacity stack (optimised).
   ///
   /// [capacity] is the initial slot count; the array will grow automatically
@@ -62,6 +66,8 @@ class LuaStack {
     openuvs = null;
     pc = 0;
     prev = null;
+    registerReturnDestination = -1;
+    registerReturnCount = 0;
   }
 
   /// Reserves an argument range whose slots will immediately be overwritten.
