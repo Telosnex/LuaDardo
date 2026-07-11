@@ -5,12 +5,28 @@ import 'exp_helper.dart';
 import 'funcinfo.dart';
 import '../lexer/token.dart';
 
+/// Marker used by the register interpreter for an allocation-free temporary
+/// dense table argument of one to three elements. The following three
+/// registers hold components; [length] determines how many are present.
+class VirtualSmallTableMarker {
+  final int length;
+  const VirtualSmallTableMarker(this.length);
+}
+
+const virtualSmallTableMarkers = <VirtualSmallTableMarker>[
+  VirtualSmallTableMarker(1),
+  VirtualSmallTableMarker(2),
+  VirtualSmallTableMarker(3),
+];
+
 class ArgAndKind {
   int? arg;
   int? kind;
 }
 
 class ExpProcessor {
+  static bool useVirtualTripleArguments = true;
+
   // kind of operands
   static final int ARG_CONST = 1; // const index
   static final int ARG_REG = 2; // register index
@@ -272,17 +288,38 @@ class ExpProcessor {
         fi.freeRegs(1);
       }
     }
+    var allocatedArgs = 0;
     for (int i = 0; i < args.length; i++) {
       Exp arg = args[i];
       int tmp = fi.allocReg();
-      if (i == nArgs - 1 && ExpHelper.isVarargOrFuncCall(arg)) {
+      allocatedArgs++;
+      final unwrapped = arg is ParensExp ? arg.exp : arg;
+      if (useVirtualTripleArguments &&
+          args.length == 1 &&
+          unwrapped is TableConstructorExp &&
+          unwrapped.keyExps.isNotEmpty &&
+          unwrapped.keyExps.length <= 3 &&
+          unwrapped.keyExps.every((key) => key == null)) {
+        fi.emitLoadK(arg.line, tmp,
+            virtualSmallTableMarkers[unwrapped.keyExps.length - 1]);
+        for (final value in unwrapped.valExps) {
+          final component = fi.allocReg();
+          allocatedArgs++;
+          processExp(fi, value, component, 1);
+        }
+        for (int j = unwrapped.valExps.length; j < 3; j++) {
+          final unused = fi.allocReg();
+          allocatedArgs++;
+          fi.emitLoadNil(arg.line, unused, 1);
+        }
+      } else if (i == nArgs - 1 && ExpHelper.isVarargOrFuncCall(arg)) {
         lastArgIsVarargOrFuncCall = true;
         processExp(fi, arg, tmp, -1);
       } else {
         processExp(fi, arg, tmp, 1);
       }
     }
-    fi.freeRegs(nArgs);
+    fi.freeRegs(allocatedArgs);
 
     if (node.nameExp != null) {
       fi.freeReg();

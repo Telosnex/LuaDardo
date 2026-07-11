@@ -8,6 +8,7 @@
 
 import 'package:lua_dardo_plus/lua.dart';
 import 'package:lua_dardo_plus/src/compiler/compiler.dart';
+import 'package:lua_dardo_plus/src/compiler/codegen/exp_processor.dart';
 import 'package:lua_dardo_plus/src/state/arithmetic.dart';
 import 'package:lua_dardo_plus/src/state/lua_state_impl.dart';
 import 'package:lua_dardo_plus/src/vm/instructions.dart';
@@ -155,7 +156,9 @@ Future<void> main() async {
       LuaStateImpl.useRegisterCalls = true;
       LuaStateImpl.useInlineRegisterFastPaths = true;
       Compiler.useExpressionInlining = true;
-      LuaStateImpl.useDirectIPairsIteration = false;
+      LuaStateImpl.useDirectIPairsIteration = true;
+      ExpProcessor.useVirtualTripleArguments = true;
+      LuaStateImpl.useInlineVirtualTripleConsumers = false;
       LuaStateImpl.useOpenResultRegisterCalls = true;
       LuaStateImpl.useExtendedRegisterFastPaths = true;
       LuaStateImpl.useRegisterCallFramePool = true;
@@ -176,14 +179,16 @@ Future<void> main() async {
       LuaStateImpl.useInlineRegisterFastPaths = true;
       Compiler.useExpressionInlining = true;
       LuaStateImpl.useDirectIPairsIteration = true;
+      ExpProcessor.useVirtualTripleArguments = true;
+      LuaStateImpl.useInlineVirtualTripleConsumers = true;
       LuaStateImpl.useOpenResultRegisterCalls = true;
       LuaStateImpl.useExtendedRegisterFastPaths = true;
       LuaStateImpl.useRegisterCallFramePool = true;
       LuaStateImpl.useIterativeRegisterCalls = true;
       return _runScript(script);
     },
-    impl1Name: 'AST closure inlining',
-    impl2Name: 'Direct ipairs iteration',
+    impl1Name: 'Scalar-replaced triples',
+    impl2Name: 'Inlined triple consumers',
   );
 
   await tester.run(
@@ -199,6 +204,8 @@ Future<void> main() async {
   LuaStateImpl.useIterativeRegisterCalls = true;
   Compiler.useExpressionInlining = true;
   LuaStateImpl.useDirectIPairsIteration = true;
+  ExpProcessor.useVirtualTripleArguments = true;
+  LuaStateImpl.useInlineVirtualTripleConsumers = true;
   LuaStateImpl.resetRegisterOpcodeProfile();
   LuaStateImpl.collectRegisterOpcodeProfile = true;
   try {

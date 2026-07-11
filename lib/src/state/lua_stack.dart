@@ -34,6 +34,10 @@ class LuaStack {
   // Direct-register continuation for an iteratively executed Lua call.
   int registerReturnDestination = -1;
   int registerReturnCount = 0;
+  int virtualSmallTableLength = 0;
+  Object? virtualTriple1;
+  Object? virtualTriple2;
+  Object? virtualTriple3;
 
   /// Creates a fixed-capacity stack (optimised).
   ///
@@ -68,6 +72,10 @@ class LuaStack {
     prev = null;
     registerReturnDestination = -1;
     registerReturnCount = 0;
+    virtualSmallTableLength = 0;
+    virtualTriple1 = null;
+    virtualTriple2 = null;
+    virtualTriple3 = null;
   }
 
   /// Reserves an argument range whose slots will immediately be overwritten.

@@ -21,6 +21,7 @@ import '../api/lua_vm.dart';
 import '../api/lua_debug.dart';
 import '../binchunk/binary_chunk.dart';
 import '../compiler/compiler.dart';
+import '../compiler/codegen/exp_processor.dart';
 import '../vm/fpb.dart';
 import '../vm/instruction.dart';
 import '../vm/instructions.dart';
@@ -72,6 +73,9 @@ class LuaStateImpl implements LuaState, LuaVM {
   /// Advances the built-in ipairs iterator directly from TFORCALL.
   static bool useDirectIPairsIteration = true;
 
+  /// Executes read-only virtual-triple consumers without a Lua call frame.
+  static bool useInlineVirtualTripleConsumers = true;
+
   /// Reuses completed register call frames without clearing overwritten slots.
   static bool useRegisterCallFramePool = true;
 
@@ -90,6 +94,7 @@ class LuaStateImpl implements LuaState, LuaVM {
   static final Map<Prototype, int> _registerLuaCallCounts = <Prototype, int>{};
   static final Map<DartFunction, int> _registerNativeCallCounts =
       <DartFunction, int>{};
+  static final Expando<bool> _virtualTripleConsumers = Expando<bool>();
 
   /// Clears all register-interpreter opcode profiling counters.
   static void resetRegisterOpcodeProfile() {
@@ -178,6 +183,8 @@ class LuaStateImpl implements LuaState, LuaVM {
 
   LuaStack? _stack = _newStack();
   final List<LuaStack> _registerCallFrames = <LuaStack>[];
+  final Map<Prototype, List<Object?>> _virtualConsumerScratch =
+      <Prototype, List<Object?>>{};
   int _registerProfilePreviousOpcode = -1;
 
   LuaStack _acquireRegisterCallFrame(int capacity) {
@@ -1009,6 +1016,152 @@ class LuaStateImpl implements LuaState, LuaVM {
   /// Calls a closure from a fixed register range and writes fixed-count
   /// results back without staging function, arguments, and results above the
   /// caller's register window.
+  bool _canConsumeVirtualTriple(Prototype proto) {
+    final cached = _virtualTripleConsumers[proto];
+    if (cached != null) return cached;
+    if (proto.numParams != 1 || proto.isVararg == 1) {
+      _virtualTripleConsumers[proto] = false;
+      return false;
+    }
+    var readsParameter = false;
+    for (final instruction in proto.code) {
+      final opcode = instruction & 0x3F;
+      final a = (instruction >> 6) & 0xFF;
+      final b = (instruction >> 23) & 0x1FF;
+      final c = (instruction >> 14) & 0x1FF;
+      if (opcode == 7 && b == 0 && c > 0xFF) {
+        final key = proto.constants[c & 0xFF];
+        if (key is int && key >= 1 && key <= 3) {
+          readsParameter = true;
+          continue;
+        }
+      }
+      if ((opcode == 0 && b == 0) ||
+          (opcode >= 13 && opcode <= 24 && (b == 0 || c == 0)) ||
+          (opcode >= 31 && opcode <= 33 && (b == 0 || c == 0)) ||
+          a == 0 && opcode != 38) {
+        _virtualTripleConsumers[proto] = false;
+        return false;
+      }
+    }
+    _virtualTripleConsumers[proto] = readsParameter;
+    return readsParameter;
+  }
+
+  static final Object _virtualConsumerFailed = Object();
+
+  Object? _executeVirtualTripleConsumer(Prototype proto, int length,
+      Object? value1, Object? value2, Object? value3) {
+    final registers = _virtualConsumerScratch.putIfAbsent(
+        proto, () => List<Object?>.filled(proto.maxStackSize, null));
+    registers[0] = virtualSmallTableMarkers[length - 1];
+    final code = proto.code;
+    final constants = proto.constants;
+    var pc = 0;
+    while (pc < code.length) {
+      final instruction = code[pc++];
+      final opcode = instruction & 0x3F;
+      final a = (instruction >> 6) & 0xFF;
+      final b = (instruction >> 23) & 0x1FF;
+      final c = (instruction >> 14) & 0x1FF;
+      switch (opcode) {
+        case 0: // MOVE
+          registers[a] = registers[b];
+          break;
+        case 1: // LOADK
+          registers[a] = constants[instruction >> 14];
+          break;
+        case 3: // LOADBOOL
+          registers[a] = b != 0;
+          if (c != 0) pc++;
+          break;
+        case 4: // LOADNIL
+          for (int i = a; i <= a + b; i++) registers[i] = null;
+          break;
+        case 7: // GETTABLE
+          if (registers[b] is! VirtualSmallTableMarker) {
+            return _virtualConsumerFailed;
+          }
+          final key = c > 0xFF ? constants[c & 0xFF] : registers[c];
+          final marker = registers[b] as VirtualSmallTableMarker;
+          registers[a] = key is int && key > marker.length
+              ? null
+              : switch (key) {
+                  1 => value1,
+                  2 => value2,
+                  3 => value3,
+                  _ => null,
+                };
+          break;
+        case 13: // ADD
+        case 14: // SUB
+        case 15: // MUL
+        case 17: // POW
+        case 18: // DIV
+          final left = b > 0xFF ? constants[b & 0xFF] : registers[b];
+          final right = c > 0xFF ? constants[c & 0xFF] : registers[c];
+          if (left is! num || right is! num) return _virtualConsumerFailed;
+          final bothInts = left is int && right is int;
+          registers[a] = switch (opcode) {
+            13 => bothInts ? left + right : left.toDouble() + right.toDouble(),
+            14 => bothInts ? left - right : left.toDouble() - right.toDouble(),
+            15 => bothInts ? left * right : left.toDouble() * right.toDouble(),
+            17 => math.pow(left.toDouble(), right.toDouble()),
+            _ => left.toDouble() / right.toDouble(),
+          };
+          break;
+        case 27: // NOT
+          registers[a] = !LuaValue.toBoolean(registers[b]);
+          break;
+        case 30: // JMP
+          pc += (instruction >> 14) - Instruction.maxArg_sbx;
+          break;
+        case 31: // EQ
+        case 32: // LT
+        case 33: // LE
+          final left = b > 0xFF ? constants[b & 0xFF] : registers[b];
+          final right = c > 0xFF ? constants[c & 0xFF] : registers[c];
+          bool result;
+          if (opcode == 31) {
+            result = left == right;
+          } else {
+            if (left is! num || right is! num) {
+              return _virtualConsumerFailed;
+            }
+            result = opcode == 32 ? left < right : left <= right;
+          }
+          if (result != (a != 0)) pc++;
+          break;
+        case 34: // TEST
+          if (LuaValue.toBoolean(registers[a]) != (c != 0)) pc++;
+          break;
+        case 35: // TESTSET
+          if (LuaValue.toBoolean(registers[b]) == (c != 0)) {
+            registers[a] = registers[b];
+          } else {
+            pc++;
+          }
+          break;
+        case 38: // RETURN
+          final result = b == 2 ? registers[a] : _virtualConsumerFailed;
+          registers.fillRange(0, registers.length, null);
+          return result;
+        default:
+          return _virtualConsumerFailed;
+      }
+    }
+    return _virtualConsumerFailed;
+  }
+
+  LuaTable _materializeVirtualTriple(LuaStack caller, int base) {
+    final marker = caller.slots[base + 1] as VirtualSmallTableMarker;
+    final table = LuaTable(marker.length, 0);
+    for (int i = 1; i <= marker.length; i++) {
+      table.put(i, caller.slots[base + 1 + i]);
+    }
+    return table;
+  }
+
   int _callFixedRegisters(LuaStack caller, int base, int nArgs, int nResults,
       [int? resultBase]) {
     final value = caller.slots[base];
@@ -1025,6 +1178,28 @@ class LuaStateImpl implements LuaState, LuaVM {
       }
     }
     final destination = resultBase ?? base;
+    final marker = caller.slots[base + 1];
+    final hasVirtualTriple = nArgs == 1 && marker is VirtualSmallTableMarker;
+    final consumeVirtualTriple = hasVirtualTriple &&
+        value.proto != null &&
+        _canConsumeVirtualTriple(value.proto!);
+    if (hasVirtualTriple && !consumeVirtualTriple) {
+      caller.slots[base + 1] = _materializeVirtualTriple(caller, base);
+    } else if (consumeVirtualTriple &&
+        useInlineVirtualTripleConsumers &&
+        nResults == 1) {
+      final result = _executeVirtualTripleConsumer(
+          value.proto!,
+          (marker as VirtualSmallTableMarker).length,
+          caller.slots[base + 2],
+          caller.slots[base + 3],
+          caller.slots[base + 4]);
+      if (!identical(result, _virtualConsumerFailed)) {
+        caller.slots[destination] = result;
+        return 1;
+      }
+    }
+
     final callee = _acquireRegisterCallFrame(
         value.proto == null ? 40 : value.proto!.maxStackSize + 20);
     callee.state = this;
@@ -1037,6 +1212,13 @@ class LuaStateImpl implements LuaState, LuaVM {
       final calleeSlots = callee.slots;
       for (int i = 0; i < nParams; i++) {
         calleeSlots[i] = i < nArgs ? caller.slots[base + i + 1] : null;
+      }
+      if (consumeVirtualTriple) {
+        callee.virtualSmallTableLength =
+            (marker as VirtualSmallTableMarker).length;
+        callee.virtualTriple1 = caller.slots[base + 2];
+        callee.virtualTriple2 = caller.slots[base + 3];
+        callee.virtualTriple3 = caller.slots[base + 4];
       }
       if (proto.isVararg == 1 && nArgs > nParams) {
         callee.varargs = List<Object?>.generate(
@@ -1195,6 +1377,17 @@ class LuaStateImpl implements LuaState, LuaVM {
           case 7: // GETTABLE
             final table = slots[b];
             final key = c > 0xFF ? constants[c & 0xFF] : slots[c];
+            if (table is VirtualSmallTableMarker && key is int) {
+              slots[a] = key > table.length
+                  ? null
+                  : switch (key) {
+                      1 => stack.virtualTriple1,
+                      2 => stack.virtualTriple2,
+                      3 => stack.virtualTriple3,
+                      _ => null,
+                    };
+              break;
+            }
             if (useInlineRegisterFastPaths && table is LuaTable) {
               Object? value;
               final normalizedKey =
@@ -1367,6 +1560,14 @@ class LuaStateImpl implements LuaState, LuaVM {
           case 36: // CALL
             final argumentField = b;
             final resultField = c;
+            if (argumentField == 2 && slots[a + 1] is VirtualSmallTableMarker) {
+              final target = slots[a];
+              if (target is! Closure ||
+                  target.proto == null ||
+                  !_canConsumeVirtualTriple(target.proto!)) {
+                slots[a + 1] = _materializeVirtualTriple(stack, a);
+              }
+            }
             if (useRegisterCalls &&
                 argumentField > 0 &&
                 (resultField > 0 || useOpenResultRegisterCalls)) {
@@ -1379,8 +1580,20 @@ class LuaStateImpl implements LuaState, LuaVM {
                 break;
               }
             }
+            if (argumentField == 2 && slots[a + 1] is VirtualSmallTableMarker) {
+              slots[a + 1] = _materializeVirtualTriple(stack, a);
+            }
             stack.pc = pc;
             Instructions.call(inst, this);
+            pc = stack.pc;
+            slots = stack.slots;
+            break;
+          case 37: // TAILCALL
+            if (b == 2 && slots[a + 1] is VirtualSmallTableMarker) {
+              slots[a + 1] = _materializeVirtualTriple(stack, a);
+            }
+            stack.pc = pc;
+            Instructions.tailCall(inst, this);
             pc = stack.pc;
             slots = stack.slots;
             break;
