@@ -957,8 +957,8 @@ class LuaStateImpl implements LuaState, LuaVM {
 
       callee.registerReturnDestination = destination;
       callee.registerReturnCount = nResults;
+      callee.finishRegisterCallSetup(nParams, proto.maxStackSize);
       _pushLuaStack(callee);
-      setTop(proto.maxStackSize);
       if (!useIterativeRegisterCalls) {
         _runLuaClosure();
         _finishRegisterLuaCall(callee);
@@ -1331,6 +1331,36 @@ class LuaStateImpl implements LuaState, LuaVM {
             break;
           case 38: // RETURN
             stack.pc = pc;
+            if (useIterativeRegisterCalls &&
+                !identical(stack, root) &&
+                useExtendedRegisterFastPaths &&
+                b > 0) {
+              // Complete a fixed-result Lua return as a frame transition. The
+              // values never need to be staged above the callee's registers.
+              final caller = stack.prev!;
+              final destination = stack.registerReturnDestination;
+              final wanted = stack.registerReturnCount;
+              final available = b - 1;
+              if (wanted < 0) {
+                final callerRegisters = caller.closure!.proto!.maxStackSize;
+                caller.setTopDirect(callerRegisters + available);
+                final callerSlots = caller.slots;
+                for (int i = 0; i < available; i++) {
+                  callerSlots[callerRegisters + i] = slots[a + i];
+                }
+                caller.push(destination + 1);
+              } else {
+                final callerSlots = caller.slots;
+                for (int i = 0; i < wanted; i++) {
+                  callerSlots[destination + i] =
+                      i < available ? slots[a + i] : null;
+                }
+              }
+              _stack = caller;
+              stack.prev = null;
+              _releaseRegisterCallFrame(stack);
+              continue frameLoop;
+            }
             if (useExtendedRegisterFastPaths && b > 0) {
               final count = b - 1;
               final registerCount = proto.maxStackSize;

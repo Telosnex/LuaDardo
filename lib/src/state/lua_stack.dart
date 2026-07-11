@@ -80,6 +80,21 @@ class LuaStack {
     }
   }
 
+  /// Expands a freshly prepared call frame from its overwritten parameter
+  /// range to the full register window. Unlike [setTopDirect], this does not
+  /// revisit parameter slots that call setup has already overwritten.
+  void finishRegisterCallSetup(int parameterCount, int registerCount) {
+    if (!_fixed) {
+      setTopDirect(registerCount);
+      return;
+    }
+    if (registerCount > slots.length) _grow(registerCount);
+    for (int i = parameterCount; i < registerCount; i++) {
+      slots[i] = null;
+    }
+    _top = registerCount;
+  }
+
   // ── Core push / pop ──────────────────────────────────────────────────
 
   void push(Object? val) {
