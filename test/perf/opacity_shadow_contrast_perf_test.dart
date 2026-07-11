@@ -154,7 +154,8 @@ Future<void> main() async {
       LuaStateImpl.useRegisterExecution = true;
       LuaStateImpl.useRegisterCalls = true;
       LuaStateImpl.useInlineRegisterFastPaths = true;
-      Compiler.useExpressionInlining = false;
+      Compiler.useExpressionInlining = true;
+      LuaStateImpl.useDirectIPairsIteration = false;
       LuaStateImpl.useOpenResultRegisterCalls = true;
       LuaStateImpl.useExtendedRegisterFastPaths = true;
       LuaStateImpl.useRegisterCallFramePool = true;
@@ -174,14 +175,15 @@ Future<void> main() async {
       LuaStateImpl.useRegisterCalls = true;
       LuaStateImpl.useInlineRegisterFastPaths = true;
       Compiler.useExpressionInlining = true;
+      LuaStateImpl.useDirectIPairsIteration = true;
       LuaStateImpl.useOpenResultRegisterCalls = true;
       LuaStateImpl.useExtendedRegisterFastPaths = true;
       LuaStateImpl.useRegisterCallFramePool = true;
       LuaStateImpl.useIterativeRegisterCalls = true;
       return _runScript(script);
     },
-    impl1Name: 'Register dispatch',
-    impl2Name: 'AST closure inlining',
+    impl1Name: 'AST closure inlining',
+    impl2Name: 'Direct ipairs iteration',
   );
 
   await tester.run(
@@ -196,6 +198,7 @@ Future<void> main() async {
   // never affect the timed comparison above.
   LuaStateImpl.useIterativeRegisterCalls = true;
   Compiler.useExpressionInlining = true;
+  LuaStateImpl.useDirectIPairsIteration = true;
   LuaStateImpl.resetRegisterOpcodeProfile();
   LuaStateImpl.collectRegisterOpcodeProfile = true;
   try {

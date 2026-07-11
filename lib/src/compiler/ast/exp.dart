@@ -1,12 +1,8 @@
-
-
 import '../lexer/token.dart';
 import 'block.dart';
 import 'node.dart';
 
-abstract class Exp extends Node {
-
-}
+abstract class Exp extends Node {}
 
 /*
 prefixexp ::= Name |
@@ -16,9 +12,7 @@ prefixexp ::= Name |
               prefixexp ‘:’ Name args |
               prefixexp args
 */
-abstract class PrefixExp extends Exp {
-
-}
+abstract class PrefixExp extends Exp {}
 
 class NilExp extends Exp {
   NilExp(int line) {
@@ -58,15 +52,13 @@ class FloatExp extends Exp {
   FloatExp(int line, this.val) {
     super.line = line;
   }
-
 }
 
 class StringExp extends Exp {
   String str;
 
-  StringExp.fromToken(Token token):this.str = token.value {
+  StringExp.fromToken(Token token) : this.str = token.value {
     super.line = token.line;
-
   }
 
   StringExp(int line, this.str) {
@@ -104,7 +96,7 @@ class BinopExp extends Exp {
   Exp exp1;
   Exp exp2;
 
-  BinopExp(Token op,this.exp1,this.exp2){
+  BinopExp(Token op, this.exp1, this.exp2) {
     line = op.line;
     if (op.kind == TokenKind.TOKEN_OP_MINUS) {
       this.op = TokenKind.TOKEN_OP_SUB;
@@ -114,7 +106,6 @@ class BinopExp extends Exp {
       this.op = op.kind;
     }
   }
-
 }
 
 class ConcatExp extends Exp {
@@ -137,6 +128,17 @@ class FuncDefExp extends Exp {
       {required this.parList, required this.block, required this.isVararg});
 }
 
+/// Compiler-generated expression that evaluates [values] once, binds them to
+/// [names], then evaluates [body]. It has no source-level Lua syntax.
+class LetExp extends Exp {
+  final List<String> names;
+  List<Exp> values;
+  final int parameterCount;
+  Exp body;
+
+  LetExp(this.names, this.values, this.body, {required this.parameterCount});
+}
+
 class ParensExp extends PrefixExp {
   Exp exp;
 
@@ -157,5 +159,6 @@ class FuncCallExp extends PrefixExp {
   StringExp? nameExp;
   List<Exp> args;
 
-  FuncCallExp({required this.prefixExp,required this.nameExp,required this.args});
+  FuncCallExp(
+      {required this.prefixExp, required this.nameExp, required this.args});
 }

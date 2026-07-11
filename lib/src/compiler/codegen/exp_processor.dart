@@ -33,6 +33,8 @@ class ExpProcessor {
       fi.emitLoadK(node.line, a, node.val);
     } else if (node is StringExp) {
       fi.emitLoadK(node.line, a, node.str);
+    } else if (node is LetExp) {
+      processLetExp(fi, node, a);
     } else if (node is ParensExp) {
       processExp(fi, node.exp, a, 1);
     } else if (node is VarargExp) {
@@ -54,6 +56,27 @@ class ExpProcessor {
     } else if (node is FuncCallExp) {
       processFuncCallExp(fi, node, a, n);
     }
+  }
+
+  static void processLetExp(FuncInfo fi, LetExp node, int a) {
+    final oldRegs = fi.usedRegs;
+    fi.enterScope(false);
+    // The AST inliner alpha-renames every binding, so introducing it before
+    // its initializer cannot capture a caller variable with the same source
+    // name. Generate each value directly into its final local slot.
+    for (int i = 0; i < node.names.length; i++) {
+      final slot = fi.addLocVar(node.names[i], fi.pc() + 1);
+      processExp(fi, node.values[i], slot, 1);
+    }
+    // Generate the body at the top of the active register window. Table
+    // constructors and calls require their result/argument windows to be
+    // contiguous, which is not guaranteed at the caller's destination.
+    final result = fi.allocReg();
+    processExp(fi, node.body, result, 1);
+    fi.emitMove(node.lastLine, a, result);
+    fi.freeReg();
+    fi.exitScope(fi.pc() + 1);
+    fi.usedRegs = oldRegs;
   }
 
   static void processVarargExp(FuncInfo fi, VarargExp node, int a, int n) {

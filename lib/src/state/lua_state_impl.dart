@@ -69,6 +69,9 @@ class LuaStateImpl implements LuaState, LuaVM {
   /// Handles upvalues, table construction, iteration, and returns in registers.
   static bool useExtendedRegisterFastPaths = true;
 
+  /// Advances the built-in ipairs iterator directly from TFORCALL.
+  static bool useDirectIPairsIteration = true;
+
   /// Reuses completed register call frames without clearing overwritten slots.
   static bool useRegisterCallFramePool = true;
 
@@ -84,11 +87,16 @@ class LuaStateImpl implements LuaState, LuaVM {
       List<int>.filled(opCodes.length, 0);
   static final List<int> _registerOpcodePairCounts =
       List<int>.filled(opCodes.length * opCodes.length, 0);
+  static final Map<Prototype, int> _registerLuaCallCounts = <Prototype, int>{};
+  static final Map<DartFunction, int> _registerNativeCallCounts =
+      <DartFunction, int>{};
 
   /// Clears all register-interpreter opcode profiling counters.
   static void resetRegisterOpcodeProfile() {
     _registerOpcodeCounts.fillRange(0, _registerOpcodeCounts.length, 0);
     _registerOpcodePairCounts.fillRange(0, _registerOpcodePairCounts.length, 0);
+    _registerLuaCallCounts.clear();
+    _registerNativeCallCounts.clear();
   }
 
   /// Formats the most frequent dynamic opcodes and adjacent opcode pairs.
@@ -128,6 +136,22 @@ class LuaStateImpl implements LuaState, LuaVM {
       out.writeln(
           '  ${(opCodes[first].name + ' → ' + opCodes[second].name).padRight(25)} '
           '${formatCount(count, pairTotal)}');
+    }
+    final luaCalls = _registerLuaCallCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final nativeCalls = _registerNativeCallCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    out.writeln('Lua call targets:');
+    for (final entry in luaCalls.take(top)) {
+      final proto = entry.key;
+      out.writeln('  lines ${proto.lineDefined}-${proto.lastLineDefined} '
+          'code=${proto.code.length} params=${proto.numParams} '
+          '${entry.value.toString().padLeft(12)}');
+    }
+    out.writeln('Native call targets:');
+    for (final entry in nativeCalls.take(top)) {
+      out.writeln('  ${entry.key.toString().padRight(40)} '
+          '${entry.value.toString().padLeft(12)}');
     }
     return out.toString().trimRight();
   }
@@ -989,6 +1013,17 @@ class LuaStateImpl implements LuaState, LuaVM {
       [int? resultBase]) {
     final value = caller.slots[base];
     if (value is! Closure) return 0;
+    if (collectRegisterOpcodeProfile) {
+      final proto = value.proto;
+      if (proto != null) {
+        _registerLuaCallCounts[proto] =
+            (_registerLuaCallCounts[proto] ?? 0) + 1;
+      } else if (value.dartFunc != null) {
+        final function = value.dartFunc!;
+        _registerNativeCallCounts[function] =
+            (_registerNativeCallCounts[function] ?? 0) + 1;
+      }
+    }
     final destination = resultBase ?? base;
     final callee = _acquireRegisterCallFrame(
         value.proto == null ? 40 : value.proto!.maxStackSize + 20);
@@ -1442,6 +1477,22 @@ class LuaStateImpl implements LuaState, LuaVM {
             }
             return;
           case 41: // TFORCALL
+            if (useDirectIPairsIteration) {
+              final iterator = slots[a];
+              final table = slots[a + 1];
+              final control = slots[a + 2];
+              if (iterator is Closure &&
+                  identical(iterator.dartFunc, BasicLib.iPairsAux) &&
+                  table is LuaTable &&
+                  table.metatable == null &&
+                  control is int) {
+                final next = control + 1;
+                final value = table.get(next);
+                slots[a + 3] = value == null ? null : next;
+                slots[a + 4] = value;
+                break;
+              }
+            }
             if (useExtendedRegisterFastPaths) {
               stack.pc = pc;
               final callResult = _callFixedRegisters(stack, a, 2, c, a + 3);

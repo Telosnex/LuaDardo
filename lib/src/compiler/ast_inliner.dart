@@ -5,25 +5,40 @@ import 'lexer/token.dart';
 
 /// Conservatively inlines local functions consisting of one return expression.
 ///
-/// Arguments must be simple values (names or literals), so substituting them
-/// cannot duplicate side effects. Normal lexical shadowing and reassignment
-/// remove candidates from the current scope.
+/// Arguments are evaluated exactly once through compiler-generated [LetExp]
+/// bindings. Normal lexical shadowing and reassignment remove candidates from
+/// the current scope.
+class _InlineTemplate {
+  final FuncDefExp function;
+  final List<String> localNames;
+  final List<Exp> localValues;
+  final Exp body;
+
+  _InlineTemplate(this.function, this.localNames, this.localValues, this.body);
+}
+
 class AstInliner {
+  static int _nextInlineId = 0;
+
   static Block optimize(Block block) {
-    _optimizeBlock(block, <String, FuncDefExp>{});
+    _nextInlineId = 0;
+    _optimizeBlock(block, <String, _InlineTemplate>{});
     return block;
   }
 
-  static void _optimizeBlock(Block block, Map<String, FuncDefExp> inherited) {
-    final functions = Map<String, FuncDefExp>.of(inherited);
+  static void _optimizeBlock(
+      Block block, Map<String, _InlineTemplate> inherited) {
+    final functions = Map<String, _InlineTemplate>.of(inherited);
     for (final stat in block.stats) {
       if (stat is LocalFuncDefStat) {
-        final nested = Map<String, FuncDefExp>.of(functions)..remove(stat.name);
+        final nested = Map<String, _InlineTemplate>.of(functions)
+          ..remove(stat.name);
         for (final parameter in stat.exp.parList) {
           nested.remove(parameter);
         }
         _optimizeBlock(stat.exp.block, nested);
-        if (_isCandidate(stat.exp)) functions[stat.name] = stat.exp;
+        final template = _template(stat.exp);
+        if (template != null) functions[stat.name] = template;
       } else if (stat is LocalVarDeclStat) {
         stat.expList = stat.expList.map((e) => _rewrite(e, functions)).toList();
         for (final name in stat.nameList) {
@@ -54,12 +69,12 @@ class AstInliner {
         stat.initExp = _rewrite(stat.initExp, functions);
         stat.limitExp = _rewrite(stat.limitExp, functions);
         stat.stepExp = _rewrite(stat.stepExp, functions);
-        final nested = Map<String, FuncDefExp>.of(functions)
+        final nested = Map<String, _InlineTemplate>.of(functions)
           ..remove(stat.varName);
         _optimizeBlock(stat.block, nested);
       } else if (stat is ForInStat) {
         stat.expList = stat.expList.map((e) => _rewrite(e, functions)).toList();
-        final nested = Map<String, FuncDefExp>.of(functions);
+        final nested = Map<String, _InlineTemplate>.of(functions);
         for (final name in stat.nameList) {
           nested.remove(name);
         }
@@ -72,37 +87,132 @@ class AstInliner {
     }
   }
 
-  static bool _isCandidate(FuncDefExp function) =>
-      !function.isVararg &&
-      function.block.stats.isEmpty &&
-      function.block.retExps?.length == 1 &&
-      _size(function.block.retExps!.single) <= 40;
+  static _InlineTemplate? _template(FuncDefExp function) {
+    if (function.isVararg || function.block.retExps?.length != 1) return null;
+    final localNames = <String>[];
+    final localValues = <Exp>[];
+    Exp? body;
+    for (final stat in function.block.stats) {
+      if (stat is LocalVarDeclStat &&
+          stat.nameList.length == stat.expList.length &&
+          body == null) {
+        localNames.addAll(stat.nameList);
+        localValues.addAll(stat.expList);
+        continue;
+      }
+      if (stat is IfStat &&
+          stat.exps.length == 1 &&
+          stat.blocks.length == 1 &&
+          stat.blocks.single.stats.isEmpty &&
+          stat.blocks.single.retExps?.length == 1 &&
+          body == null) {
+        final whenTrue = stat.blocks.single.retExps!.single;
+        if (!_alwaysTruthy(whenTrue)) return null;
+        final and = BinopExp(Token(stat.line, TokenKind.TOKEN_OP_AND, ''),
+            stat.exps.single, whenTrue);
+        body = BinopExp(Token(stat.line, TokenKind.TOKEN_OP_OR, ''), and,
+            function.block.retExps!.single);
+        continue;
+      }
+      return null;
+    }
+    body ??= function.block.retExps!.single;
+    if (_size(body) > 80) return null;
+    final bound = <String>{...function.parList, ...localNames};
+    if (_freeNames(body, bound).isNotEmpty ||
+        localValues.any((value) => _freeNames(value, bound).isNotEmpty)) {
+      return null;
+    }
+    return _InlineTemplate(function, localNames, localValues, body);
+  }
 
-  static bool _simpleArgument(Exp exp) =>
-      exp is NameExp ||
-      exp is NilExp ||
-      exp is TrueExp ||
-      exp is FalseExp ||
+  static bool _alwaysTruthy(Exp exp) =>
       exp is IntegerExp ||
       exp is FloatExp ||
-      exp is StringExp;
+      exp is StringExp ||
+      exp is TableConstructorExp ||
+      exp is BinopExp &&
+          exp.op != TokenKind.TOKEN_OP_EQ &&
+          exp.op != TokenKind.TOKEN_OP_NE &&
+          exp.op != TokenKind.TOKEN_OP_LT &&
+          exp.op != TokenKind.TOKEN_OP_LE &&
+          exp.op != TokenKind.TOKEN_OP_GT &&
+          exp.op != TokenKind.TOKEN_OP_GE &&
+          exp.op != TokenKind.TOKEN_OP_AND &&
+          exp.op != TokenKind.TOKEN_OP_OR;
 
-  static Exp _rewrite(Exp exp, Map<String, FuncDefExp> functions) {
+  static Set<String> _freeNames(Exp exp, Set<String> bound) {
+    final names = <String>{};
+    void visit(Exp node, Set<String> scope) {
+      if (node is NameExp) {
+        if (!scope.contains(node.name)) names.add(node.name);
+      } else if (node is BinopExp) {
+        visit(node.exp1, scope);
+        visit(node.exp2, scope);
+      } else if (node is UnopExp) {
+        visit(node.exp, scope);
+      } else if (node is ConcatExp) {
+        for (final child in node.exps) {
+          visit(child, scope);
+        }
+      } else if (node is TableConstructorExp) {
+        for (final child in node.keyExps) {
+          if (child != null) visit(child, scope);
+        }
+        for (final child in node.valExps) {
+          visit(child, scope);
+        }
+      } else if (node is LetExp) {
+        final nested = <String>{...scope};
+        for (int i = 0; i < node.names.length; i++) {
+          visit(node.values[i], nested);
+          nested.add(node.names[i]);
+        }
+        visit(node.body, nested);
+      } else if (node is ParensExp) {
+        visit(node.exp, scope);
+      } else if (node is TableAccessExp) {
+        visit(node.prefixExp, scope);
+        visit(node.keyExp, scope);
+      } else if (node is FuncCallExp) {
+        visit(node.prefixExp, scope);
+        for (final child in node.args) {
+          visit(child, scope);
+        }
+      }
+    }
+
+    visit(exp, bound);
+    return names;
+  }
+
+  static Exp _rewrite(Exp exp, Map<String, _InlineTemplate> functions) {
     if (exp is FuncCallExp) {
       exp.prefixExp = _rewrite(exp.prefixExp, functions);
       exp.args = exp.args.map((e) => _rewrite(e, functions)).toList();
       final target = exp.prefixExp;
       if (exp.nameExp == null && target is NameExp) {
-        final function = functions[target.name];
-        if (function != null &&
-            function.parList.length == exp.args.length &&
-            exp.args.every(_simpleArgument)) {
+        final template = functions[target.name];
+        if (template != null &&
+            template.function.parList.length == exp.args.length) {
+          final id = _nextInlineId++;
+          final names = <String>[];
+          final values = <Exp>[...exp.args];
           final substitutions = <String, Exp>{};
-          for (int i = 0; i < function.parList.length; i++) {
-            substitutions[function.parList[i]] = exp.args[i];
+          for (final parameter in template.function.parList) {
+            final renamed = '(@inline$id:$parameter)';
+            names.add(renamed);
+            substitutions[parameter] = NameExp(exp.line, renamed);
           }
-          return ParensExp(
-              _clone(function.block.retExps!.single, substitutions));
+          for (int i = 0; i < template.localNames.length; i++) {
+            values.add(_clone(template.localValues[i], substitutions));
+            final local = template.localNames[i];
+            final renamed = '(@inline$id:$local)';
+            names.add(renamed);
+            substitutions[local] = NameExp(exp.line, renamed);
+          }
+          return LetExp(names, values, _clone(template.body, substitutions),
+              parameterCount: template.function.parList.length);
         }
       }
       return exp;
@@ -119,6 +229,9 @@ class AstInliner {
           .map((e) => e == null ? null : _rewrite(e, functions))
           .toList();
       exp.valExps = exp.valExps.map((e) => _rewrite(e, functions)).toList();
+    } else if (exp is LetExp) {
+      exp.values = exp.values.map((e) => _rewrite(e, functions)).toList();
+      exp.body = _rewrite(exp.body, functions);
     } else if (exp is ParensExp) {
       exp.exp = _rewrite(exp.exp, functions);
     } else if (exp is TableAccessExp) {
@@ -166,6 +279,13 @@ class AstInliner {
           exp.valExps.map((e) => _clone(e, substitutions)).toList();
       return result;
     }
+    if (exp is LetExp) {
+      return LetExp(
+          List<String>.of(exp.names),
+          exp.values.map((e) => _clone(e, substitutions)).toList(),
+          _clone(exp.body, substitutions),
+          parameterCount: exp.parameterCount);
+    }
     if (exp is ParensExp) return ParensExp(_clone(exp.exp, substitutions));
     if (exp is TableAccessExp) {
       return TableAccessExp(exp.lastLine, _clone(exp.prefixExp, substitutions),
@@ -194,6 +314,11 @@ class AstInliner {
           exp.keyExps
               .fold<int>(0, (sum, e) => sum + (e == null ? 0 : _size(e))) +
           exp.valExps.fold<int>(0, (sum, e) => sum + _size(e));
+    }
+    if (exp is LetExp) {
+      return 1 +
+          exp.values.fold<int>(0, (sum, e) => sum + _size(e)) +
+          _size(exp.body);
     }
     if (exp is ParensExp) {
       return 1 + _size(exp.exp);
