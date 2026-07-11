@@ -16,6 +16,9 @@ abstract class LuaVM extends LuaState {
   /// the public Lua stack API. Used by arithmetic bytecodes on the hot path.
   void binaryArithRK(int dest, int b, int c, ArithOp op);
 
+  /// Executes `R(dest) = R(table)[RK(key)]` directly on VM registers.
+  void getTableRK(int dest, int table, int key);
+
   int registerCount();
 
   void loadVararg(int n);

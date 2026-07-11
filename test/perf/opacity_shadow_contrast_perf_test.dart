@@ -7,6 +7,7 @@
 //   dart run --enable-vm-service test/perf/opacity_shadow_contrast_perf_test.dart
 
 import 'package:lua_dardo_plus/lua.dart';
+import 'package:lua_dardo_plus/src/state/arithmetic.dart';
 import 'package:lua_dardo_plus/src/vm/instructions.dart';
 
 import 'perf_tester.dart';
@@ -139,15 +140,19 @@ Future<void> main() async {
     testName: 'opacity shadow contrast envelope workload',
     testCases: const [_workload],
     implementation1: (script) {
-      Instructions.useDirectArithmetic = false;
+      Instructions.useDirectArithmetic = true;
+      Arithmetic.useNumericFastPath = true;
+      Instructions.useDirectTableGet = false;
       return _runScript(script);
     },
     implementation2: (script) {
       Instructions.useDirectArithmetic = true;
+      Arithmetic.useNumericFastPath = true;
+      Instructions.useDirectTableGet = true;
       return _runScript(script);
     },
-    impl1Name: 'Stack arithmetic',
-    impl2Name: 'Direct arithmetic',
+    impl1Name: 'Numeric fast path',
+    impl2Name: 'Direct table get',
   );
 
   await tester.run(

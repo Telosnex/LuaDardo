@@ -7,6 +7,7 @@ import 'instruction.dart';
 class Instructions {
   /// Enables direct register arithmetic. Switchable for benchmark baselines.
   static bool useDirectArithmetic = true;
+  static bool useDirectTableGet = true;
 
   /// number of list items to accumulate before a SETLIST instruction
   static final int lfields_per_flush = 50;
@@ -322,6 +323,10 @@ class Instructions {
     int a = Instruction.getA(i) + 1;
     int b = Instruction.getB(i) + 1;
     int c = Instruction.getC(i);
+    if (useDirectTableGet) {
+      vm.getTableRK(a, b, c);
+      return;
+    }
     vm.getRK(c);
     vm.getTable(b);
     vm.replace(a);

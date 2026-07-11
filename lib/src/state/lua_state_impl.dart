@@ -1647,6 +1647,29 @@ class LuaStateImpl implements LuaState, LuaVM {
   }
 
   @override
+  void getTableRK(int dest, int table, int key) {
+    final stack = _stack!;
+    final slots = stack.slots;
+    final t = slots[table - 1];
+    final constants = stack.closure!.proto!.constants;
+    final k = key > 0xFF ? constants[key & 0xFF] : slots[key];
+
+    // Plain tables are by far the common case. Missing values can also be
+    // assigned directly when there is no __index metamethod.
+    if (t is LuaTable) {
+      final value = t.get(k);
+      if (value != null || !t.hasMetafield('__index')) {
+        slots[dest - 1] = value;
+        return;
+      }
+    }
+
+    // Preserve all generic indexing and metamethod behavior off the fast path.
+    _getTable(t, k, false);
+    slots[dest - 1] = stack.pop();
+  }
+
+  @override
   void loadProto(int idx) {
     Prototype proto = _stack!.closure!.proto!.protos[idx]!;
     Closure closure = Closure(proto);
