@@ -158,7 +158,8 @@ Future<void> main() async {
       Compiler.useExpressionInlining = true;
       LuaStateImpl.useDirectIPairsIteration = true;
       ExpProcessor.useVirtualTripleArguments = true;
-      LuaStateImpl.useInlineVirtualTripleConsumers = false;
+      ExpProcessor.useInlineTableProducerFusion = false;
+      LuaStateImpl.useInlineVirtualTripleConsumers = true;
       LuaStateImpl.useOpenResultRegisterCalls = true;
       LuaStateImpl.useExtendedRegisterFastPaths = true;
       LuaStateImpl.useRegisterCallFramePool = true;
@@ -180,6 +181,7 @@ Future<void> main() async {
       Compiler.useExpressionInlining = true;
       LuaStateImpl.useDirectIPairsIteration = true;
       ExpProcessor.useVirtualTripleArguments = true;
+      ExpProcessor.useInlineTableProducerFusion = true;
       LuaStateImpl.useInlineVirtualTripleConsumers = true;
       LuaStateImpl.useOpenResultRegisterCalls = true;
       LuaStateImpl.useExtendedRegisterFastPaths = true;
@@ -187,14 +189,14 @@ Future<void> main() async {
       LuaStateImpl.useIterativeRegisterCalls = true;
       return _runScript(script);
     },
-    impl1Name: 'Scalar-replaced triples',
-    impl2Name: 'Inlined triple consumers',
+    impl1Name: 'Scalar replacement',
+    impl2Name: 'Producer fusion',
   );
 
   await tester.run(
-    warmupRuns: 1,
-    benchmarkRuns: 2,
-    profile: true,
+    warmupRuns: 2,
+    benchmarkRuns: 8,
+    profile: false,
     profileRuns: 1,
     profileTopN: 40,
   );
@@ -205,6 +207,7 @@ Future<void> main() async {
   Compiler.useExpressionInlining = true;
   LuaStateImpl.useDirectIPairsIteration = true;
   ExpProcessor.useVirtualTripleArguments = true;
+  ExpProcessor.useInlineTableProducerFusion = true;
   LuaStateImpl.useInlineVirtualTripleConsumers = true;
   LuaStateImpl.resetRegisterOpcodeProfile();
   LuaStateImpl.collectRegisterOpcodeProfile = true;

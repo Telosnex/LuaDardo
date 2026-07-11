@@ -26,6 +26,7 @@ class ArgAndKind {
 
 class ExpProcessor {
   static bool useVirtualTripleArguments = true;
+  static bool useInlineTableProducerFusion = true;
 
   // kind of operands
   static final int ARG_CONST = 1; // const index
@@ -274,6 +275,55 @@ class ExpProcessor {
     fi.emitTailCall(node.line, a, nArgs);
   }
 
+  static TableConstructorExp? _virtualSmallTableBody(Exp exp) {
+    if (exp is ParensExp) return _virtualSmallTableBody(exp.exp);
+    if (useInlineTableProducerFusion && exp is LetExp) {
+      return _virtualSmallTableBody(exp.body);
+    }
+    if (exp is TableConstructorExp &&
+        exp.keyExps.isNotEmpty &&
+        exp.keyExps.length <= 3 &&
+        exp.keyExps.every((key) => key == null)) {
+      return exp;
+    }
+    return null;
+  }
+
+  static void _processVirtualSmallTable(
+      FuncInfo fi, Exp exp, List<int> destinations) {
+    if (exp is ParensExp) {
+      _processVirtualSmallTable(fi, exp.exp, destinations);
+      return;
+    }
+    if (exp is LetExp) {
+      final oldRegs = fi.usedRegs;
+      fi.enterScope(false);
+      for (int i = 0; i < exp.names.length; i++) {
+        final slot = fi.addLocVar(exp.names[i], fi.pc() + 1);
+        processExp(fi, exp.values[i], slot, 1);
+      }
+      _processVirtualSmallTable(fi, exp.body, destinations);
+      fi.exitScope(fi.pc() + 1);
+      fi.usedRegs = oldRegs;
+      return;
+    }
+    final table = exp as TableConstructorExp;
+    final results = <int>[];
+    for (final value in table.valExps) {
+      final result = fi.allocReg();
+      results.add(result);
+      processExp(fi, value, result, 1);
+    }
+    for (int i = 0; i < destinations.length; i++) {
+      if (i < results.length) {
+        fi.emitMove(exp.line, destinations[i], results[i]);
+      } else {
+        fi.emitLoadNil(exp.line, destinations[i], 1);
+      }
+    }
+    fi.freeRegs(results.length);
+  }
+
   static int prepFuncCall(FuncInfo fi, FuncCallExp node, int a) {
     var args = node.args;
     int nArgs = args.length;
@@ -293,25 +343,18 @@ class ExpProcessor {
       Exp arg = args[i];
       int tmp = fi.allocReg();
       allocatedArgs++;
-      final unwrapped = arg is ParensExp ? arg.exp : arg;
+      final virtualTable = _virtualSmallTableBody(arg);
       if (useVirtualTripleArguments &&
           args.length == 1 &&
-          unwrapped is TableConstructorExp &&
-          unwrapped.keyExps.isNotEmpty &&
-          unwrapped.keyExps.length <= 3 &&
-          unwrapped.keyExps.every((key) => key == null)) {
+          virtualTable != null) {
         fi.emitLoadK(arg.line, tmp,
-            virtualSmallTableMarkers[unwrapped.keyExps.length - 1]);
-        for (final value in unwrapped.valExps) {
-          final component = fi.allocReg();
+            virtualSmallTableMarkers[virtualTable.keyExps.length - 1]);
+        final destinations = <int>[];
+        for (int j = 0; j < 3; j++) {
+          destinations.add(fi.allocReg());
           allocatedArgs++;
-          processExp(fi, value, component, 1);
         }
-        for (int j = unwrapped.valExps.length; j < 3; j++) {
-          final unused = fi.allocReg();
-          allocatedArgs++;
-          fi.emitLoadNil(arg.line, unused, 1);
-        }
+        _processVirtualSmallTable(fi, arg, destinations);
       } else if (i == nArgs - 1 && ExpHelper.isVarargOrFuncCall(arg)) {
         lastArgIsVarargOrFuncCall = true;
         processExp(fi, arg, tmp, -1);
