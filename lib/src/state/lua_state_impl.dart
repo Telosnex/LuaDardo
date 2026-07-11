@@ -1030,13 +1030,15 @@ class LuaStateImpl implements LuaState, LuaVM {
       // Complex handlers can grow the frame and replace its backing array, so
       // refresh this cache after every fallback through the stack API.
       var slots = stack.slots;
-      final proto = stack.closure!.proto!;
+      final closure = stack.closure!;
+      final upvalues = closure.upvals;
+      final proto = closure.proto!;
       final code = proto.code;
       final constants = proto.constants;
+      var pc = stack.pc;
 
       for (;;) {
-        final pc = stack.pc++;
-        final inst = code[pc];
+        final inst = code[pc++];
         final opcode = inst & 0x3F;
         final a = (inst >> 6) & 0xFF;
         final b = (inst >> 23) & 0x1FF;
@@ -1050,7 +1052,7 @@ class LuaStateImpl implements LuaState, LuaVM {
             break;
           case 3: // LOADBOOL
             slots[a] = (b) != 0;
-            if ((c) != 0) stack.pc++;
+            if ((c) != 0) pc++;
             break;
           case 4: // LOADNIL
             final end = a + b;
@@ -1060,18 +1062,20 @@ class LuaStateImpl implements LuaState, LuaVM {
             break;
           case 5: // GETUPVAL
             if (useExtendedRegisterFastPaths) {
-              final holder = stack.closure!.upvals[b];
+              final holder = upvalues[b];
               slots[a] = holder?.stack != null
                   ? holder!.stack!.slots[holder.index!]
                   : holder?.value;
             } else {
+              stack.pc = pc;
               Instructions.getUpval(inst, this);
+              pc = stack.pc;
               slots = stack.slots;
             }
             break;
           case 6: // GETTABUP
             if (useExtendedRegisterFastPaths) {
-              final holder = stack.closure!.upvals[b];
+              final holder = upvalues[b];
               final table = holder?.stack != null
                   ? holder!.stack!.slots[holder.index!]
                   : holder?.value;
@@ -1084,7 +1088,9 @@ class LuaStateImpl implements LuaState, LuaVM {
                 }
               }
             }
+            stack.pc = pc;
             Instructions.getTabUp(inst, this);
+            pc = stack.pc;
             slots = stack.slots;
             break;
           case 7: // GETTABLE
@@ -1108,12 +1114,14 @@ class LuaStateImpl implements LuaState, LuaVM {
                 break;
               }
             }
+            stack.pc = pc;
             getTableRK(a + 1, b + 1, c);
+            pc = stack.pc;
             slots = stack.slots;
             break;
           case 8: // SETTABUP
             if (useExtendedRegisterFastPaths) {
-              final holder = stack.closure!.upvals[a];
+              final holder = upvalues[a];
               final table = holder?.stack != null
                   ? holder!.stack!.slots[holder.index!]
                   : holder?.value;
@@ -1124,19 +1132,23 @@ class LuaStateImpl implements LuaState, LuaVM {
                 break;
               }
             }
+            stack.pc = pc;
             Instructions.setTabUp(inst, this);
+            pc = stack.pc;
             slots = stack.slots;
             break;
           case 9: // SETUPVAL
             if (useExtendedRegisterFastPaths) {
-              final holder = stack.closure!.upvals[b]!;
+              final holder = upvalues[b]!;
               if (holder.stack != null) {
                 holder.stack!.slots[holder.index!] = slots[a];
               } else {
                 holder.value = slots[a];
               }
             } else {
+              stack.pc = pc;
               Instructions.setUpval(inst, this);
+              pc = stack.pc;
               slots = stack.slots;
             }
             break;
@@ -1149,7 +1161,9 @@ class LuaStateImpl implements LuaState, LuaVM {
               final value = c > 0xFF ? constants[c & 0xFF] : slots[c];
               table.put(key, value);
             } else {
+              stack.pc = pc;
               setTableRK(a + 1, b, c);
+              pc = stack.pc;
               slots = stack.slots;
             }
             break;
@@ -1157,7 +1171,9 @@ class LuaStateImpl implements LuaState, LuaVM {
             if (useExtendedRegisterFastPaths) {
               slots[a] = LuaTable(FPB.fb2int(b), FPB.fb2int(c));
             } else {
+              stack.pc = pc;
               Instructions.newTable(inst, this);
+              pc = stack.pc;
               slots = stack.slots;
             }
             break;
@@ -1199,9 +1215,13 @@ class LuaStateImpl implements LuaState, LuaVM {
                 _ => null,
               };
             }
-            result ??=
-                Arithmetic.arith(left, right, operations[opcode - 13], this);
-            slots = stack.slots;
+            if (result == null) {
+              stack.pc = pc;
+              result =
+                  Arithmetic.arith(left, right, operations[opcode - 13], this);
+              pc = stack.pc;
+              slots = stack.slots;
+            }
             slots[a] = result;
             break;
           case 27: // NOT
@@ -1212,7 +1232,7 @@ class LuaStateImpl implements LuaState, LuaVM {
             if (close != 0) {
               closeUpvalues(close);
             }
-            stack.pc += (inst >> 14) - Instruction.maxArg_sbx;
+            pc += (inst >> 14) - Instruction.maxArg_sbx;
             break;
           case >= 31 && <= 33: // EQ, LT, LE
             final leftOperand = b;
@@ -1224,23 +1244,25 @@ class LuaStateImpl implements LuaState, LuaVM {
             final right = rightOperand > 0xFF
                 ? constants[rightOperand & 0xFF]
                 : slots[rightOperand];
+            stack.pc = pc;
             final result = switch (opcode) {
               31 => Comparison.eq(left, right, this),
               32 => Comparison.lt(left, right, this),
               _ => Comparison.le(left, right, this),
             };
+            pc = stack.pc;
             slots = stack.slots;
-            if (result != expected) stack.pc++;
+            if (result != expected) pc++;
             break;
           case 34: // TEST
-            if (LuaValue.toBoolean(slots[a]) != (c != 0)) stack.pc++;
+            if (LuaValue.toBoolean(slots[a]) != (c != 0)) pc++;
             break;
           case 35: // TESTSET
             final source = b;
             if (LuaValue.toBoolean(slots[source]) == (c != 0)) {
               slots[a] = slots[source];
             } else {
-              stack.pc++;
+              pc++;
             }
             break;
           case 36: // CALL
@@ -1249,6 +1271,7 @@ class LuaStateImpl implements LuaState, LuaVM {
             if (useRegisterCalls &&
                 argumentField > 0 &&
                 (resultField > 0 || useOpenResultRegisterCalls)) {
+              stack.pc = pc;
               final callResult = _callFixedRegisters(
                   stack, a, argumentField - 1, resultField - 1);
               if (callResult == 2) continue frameLoop;
@@ -1257,7 +1280,9 @@ class LuaStateImpl implements LuaState, LuaVM {
                 break;
               }
             }
+            stack.pc = pc;
             Instructions.call(inst, this);
+            pc = stack.pc;
             slots = stack.slots;
             break;
           case 39: // FORLOOP
@@ -1272,7 +1297,7 @@ class LuaStateImpl implements LuaState, LuaVM {
             slots[a] = next;
             final limit = slots[a + 1] as num;
             if ((step >= 0 && next <= limit) || (step < 0 && next >= limit)) {
-              stack.pc += (inst >> 14) - Instruction.maxArg_sbx;
+              pc += (inst >> 14) - Instruction.maxArg_sbx;
               slots[a + 3] = next;
             }
             break;
@@ -1288,20 +1313,24 @@ class LuaStateImpl implements LuaState, LuaVM {
                   ? initial - step
                   : initial.toDouble() - step.toDouble();
             } else {
+              stack.pc = pc;
               slots[a] =
                   Arithmetic.arith(initial, step, ArithOp.luaOpSub, this);
+              pc = stack.pc;
+              slots = stack.slots;
             }
             slots[a + 1] = limit;
             slots[a + 2] = step;
-            stack.pc += (inst >> 14) - Instruction.maxArg_sbx;
+            pc += (inst >> 14) - Instruction.maxArg_sbx;
             break;
           case 42: // TFORLOOP
             if (slots[a + 1] != null) {
               slots[a] = slots[a + 1];
-              stack.pc += (inst >> 14) - Instruction.maxArg_sbx;
+              pc += (inst >> 14) - Instruction.maxArg_sbx;
             }
             break;
           case 38: // RETURN
+            stack.pc = pc;
             if (useExtendedRegisterFastPaths && b > 0) {
               final count = b - 1;
               final registerCount = proto.maxStackSize;
@@ -1320,6 +1349,7 @@ class LuaStateImpl implements LuaState, LuaVM {
             return;
           case 41: // TFORCALL
             if (useExtendedRegisterFastPaths) {
+              stack.pc = pc;
               final callResult = _callFixedRegisters(stack, a, 2, c, a + 3);
               if (callResult == 2) continue frameLoop;
               if (callResult == 1) {
@@ -1327,26 +1357,32 @@ class LuaStateImpl implements LuaState, LuaVM {
                 break;
               }
             }
+            stack.pc = pc;
             Instructions.tForCall(inst, this);
+            pc = stack.pc;
             slots = stack.slots;
             break;
           case 43: // SETLIST
             if (useExtendedRegisterFastPaths && b > 0) {
               final table = slots[a] as LuaTable;
-              final block = c > 0 ? c - 1 : code[stack.pc++] >> 6;
+              final block = c > 0 ? c - 1 : code[pc++] >> 6;
               var index = block * Instructions.lfields_per_flush;
               for (int i = 1; i <= b; i++) {
                 table.put(++index, slots[a + i]);
               }
             } else {
+              stack.pc = pc;
               Instructions.setList(inst, this);
+              pc = stack.pc;
               slots = stack.slots;
             }
             break;
           case 46: // EXTRAARG
             break;
           default:
+            stack.pc = pc;
             opCodes[opcode].action!(inst, this);
+            pc = stack.pc;
             slots = stack.slots;
         }
       }
