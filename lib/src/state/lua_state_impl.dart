@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:lua_dardo_plus/src/state/lua_userdata.dart';
@@ -57,6 +58,12 @@ class LuaStateImpl implements LuaState, LuaVM {
 
   /// Transfers fixed-arity calls directly between register frames.
   static bool useRegisterCalls = true;
+
+  /// Extends direct register calls to variable-result calls.
+  static bool useOpenResultRegisterCalls = true;
+
+  /// Inlines numeric arithmetic and plain-table reads in the register tier.
+  static bool useInlineRegisterFastPaths = true;
 
   /// Controls the stack representation.
   ///
@@ -919,9 +926,19 @@ class LuaStateImpl implements LuaState, LuaVM {
       _popLuaStack();
 
       final available = callee.top() - proto.maxStackSize;
-      for (int i = 0; i < nResults; i++) {
-        caller.slots[base + i] =
-            i < available ? callee.slots[proto.maxStackSize + i] : null;
+      if (nResults < 0) {
+        final registerCount = caller.closure!.proto!.maxStackSize;
+        caller.setTopDirect(registerCount + available);
+        final callerSlots = caller.slots;
+        for (int i = 0; i < available; i++) {
+          callerSlots[registerCount + i] = callee.slots[proto.maxStackSize + i];
+        }
+        caller.push(base + 1); // open-result destination marker
+      } else {
+        for (int i = 0; i < nResults; i++) {
+          caller.slots[base + i] =
+              i < available ? callee.slots[proto.maxStackSize + i] : null;
+        }
       }
     } else {
       for (int i = 0; i < nArgs; i++) {
@@ -932,9 +949,19 @@ class LuaStateImpl implements LuaState, LuaVM {
       _popLuaStack();
 
       final resultStart = callee.top() - resultCount;
-      for (int i = 0; i < nResults; i++) {
-        caller.slots[base + i] =
-            i < resultCount ? callee.slots[resultStart + i] : null;
+      if (nResults < 0) {
+        final registerCount = caller.closure!.proto!.maxStackSize;
+        caller.setTopDirect(registerCount + resultCount);
+        final callerSlots = caller.slots;
+        for (int i = 0; i < resultCount; i++) {
+          callerSlots[registerCount + i] = callee.slots[resultStart + i];
+        }
+        caller.push(base + 1); // open-result destination marker
+      } else {
+        for (int i = 0; i < nResults; i++) {
+          caller.slots[base + i] =
+              i < resultCount ? callee.slots[resultStart + i] : null;
+        }
       }
     }
     return true;
@@ -955,33 +982,63 @@ class LuaStateImpl implements LuaState, LuaVM {
         operand > 0xFF ? constants[operand & 0xFF] : slots[operand];
 
     for (;;) {
-      final inst = code[stack.pc++];
+      final pc = stack.pc++;
+      final inst = code[pc];
       final opcode = inst & 0x3F;
       final a = (inst >> 6) & 0xFF;
+      final b = (inst >> 23) & 0x1FF;
+      final c = (inst >> 14) & 0x1FF;
       switch (opcode) {
         case 0: // MOVE
-          slots[a] = slots[(inst >> 23) & 0x1FF];
+          slots[a] = slots[b];
           break;
         case 1: // LOADK
           slots[a] = constants[inst >> 14];
           break;
         case 3: // LOADBOOL
-          slots[a] = ((inst >> 23) & 0x1FF) != 0;
-          if (((inst >> 14) & 0x1FF) != 0) stack.pc++;
+          slots[a] = (b) != 0;
+          if ((c) != 0) stack.pc++;
           break;
         case 4: // LOADNIL
-          final end = a + ((inst >> 23) & 0x1FF);
+          final end = a + (b);
           for (int register = a; register <= end; register++) {
             slots[register] = null;
           }
           break;
         case 7: // GETTABLE
-          getTableRK(a + 1, ((inst >> 23) & 0x1FF) + 1, (inst >> 14) & 0x1FF);
+          final table = slots[b];
+          final key = rk(c);
+          if (useInlineRegisterFastPaths && table is LuaTable) {
+            Object? value;
+            final normalizedKey =
+                key is double && LuaNumber.isInteger(key) ? key.toInt() : key;
+            final array = table.arr;
+            if (normalizedKey is int &&
+                array != null &&
+                normalizedKey >= 1 &&
+                normalizedKey <= array.length) {
+              value = array[normalizedKey - 1];
+            } else {
+              value = table.map?[normalizedKey];
+            }
+            if (value != null || table.metatable == null) {
+              slots[a] = value;
+              break;
+            }
+          }
+          getTableRK(a + 1, (b) + 1, c);
           slots = stack.slots;
           break;
         case 10: // SETTABLE
-          setTableRK(a + 1, (inst >> 23) & 0x1FF, (inst >> 14) & 0x1FF);
-          slots = stack.slots;
+          final table = slots[a];
+          if (useInlineRegisterFastPaths &&
+              table is LuaTable &&
+              table.metatable == null) {
+            table.put(rk(b), rk(c));
+          } else {
+            setTableRK(a + 1, b, c);
+            slots = stack.slots;
+          }
           break;
         case >= 13 && <= 24: // binary arithmetic
           const operations = <ArithOp>[
@@ -998,15 +1055,32 @@ class LuaStateImpl implements LuaState, LuaVM {
             ArithOp.luaOpShl,
             ArithOp.luaOpShr,
           ];
-          final leftOperand = (inst >> 23) & 0x1FF;
-          final rightOperand = (inst >> 14) & 0x1FF;
-          final result = Arithmetic.arith(
-              rk(leftOperand), rk(rightOperand), operations[opcode - 13], this);
+          final leftOperand = b;
+          final rightOperand = c;
+          final left = rk(leftOperand);
+          final right = rk(rightOperand);
+          Object? result;
+          if (useInlineRegisterFastPaths && left is num && right is num) {
+            final bothInts = left is int && right is int;
+            result = switch (opcode) {
+              13 =>
+                bothInts ? left + right : left.toDouble() + right.toDouble(),
+              14 =>
+                bothInts ? left - right : left.toDouble() - right.toDouble(),
+              15 =>
+                bothInts ? left * right : left.toDouble() * right.toDouble(),
+              17 => math.pow(left.toDouble(), right.toDouble()),
+              18 => left.toDouble() / right.toDouble(),
+              _ => null,
+            };
+          }
+          result ??=
+              Arithmetic.arith(left, right, operations[opcode - 13], this);
           slots = stack.slots;
           slots[a] = result;
           break;
         case 27: // NOT
-          slots[a] = !LuaValue.toBoolean(slots[(inst >> 23) & 0x1FF]);
+          slots[a] = !LuaValue.toBoolean(slots[b]);
           break;
         case 30: // JMP
           final close = a;
@@ -1016,8 +1090,8 @@ class LuaStateImpl implements LuaState, LuaVM {
           stack.pc += (inst >> 14) - Instruction.maxArg_sbx;
           break;
         case >= 31 && <= 33: // EQ, LT, LE
-          final leftOperand = (inst >> 23) & 0x1FF;
-          final rightOperand = (inst >> 14) & 0x1FF;
+          final leftOperand = b;
+          final rightOperand = c;
           final expected = a != 0;
           final result = switch (opcode) {
             31 => Comparison.eq(rk(leftOperand), rk(rightOperand), this),
@@ -1028,25 +1102,22 @@ class LuaStateImpl implements LuaState, LuaVM {
           if (result != expected) stack.pc++;
           break;
         case 34: // TEST
-          if (LuaValue.toBoolean(slots[a]) != (((inst >> 14) & 0x1FF) != 0)) {
-            stack.pc++;
-          }
+          if (LuaValue.toBoolean(slots[a]) != (c != 0)) stack.pc++;
           break;
         case 35: // TESTSET
-          final source = (inst >> 23) & 0x1FF;
-          if (LuaValue.toBoolean(slots[source]) ==
-              (((inst >> 14) & 0x1FF) != 0)) {
+          final source = b;
+          if (LuaValue.toBoolean(slots[source]) == (c != 0)) {
             slots[a] = slots[source];
           } else {
             stack.pc++;
           }
           break;
         case 36: // CALL
-          final argumentField = (inst >> 23) & 0x1FF;
-          final resultField = (inst >> 14) & 0x1FF;
+          final argumentField = b;
+          final resultField = c;
           if (useRegisterCalls &&
               argumentField > 0 &&
-              resultField > 0 &&
+              (resultField > 0 || useOpenResultRegisterCalls) &&
               _callFixedRegisters(
                   stack, a, argumentField - 1, resultField - 1)) {
             slots = stack.slots;
@@ -1057,8 +1128,12 @@ class LuaStateImpl implements LuaState, LuaVM {
           break;
         case 39: // FORLOOP
           final step = slots[a + 2] as num;
-          final next =
-              Arithmetic.arith(slots[a], step, ArithOp.luaOpAdd, this) as num;
+          final current = slots[a] as num;
+          final num next = useInlineRegisterFastPaths
+              ? (current is int && step is int
+                  ? current + step
+                  : current.toDouble() + step.toDouble())
+              : Arithmetic.arith(current, step, ArithOp.luaOpAdd, this) as num;
           slots[a] = next;
           final limit = slots[a + 1] as num;
           if ((step >= 0 && next <= limit) || (step < 0 && next >= limit)) {
@@ -1073,7 +1148,13 @@ class LuaStateImpl implements LuaState, LuaVM {
           if (initial is String) initial = LuaValue.toFloat(initial);
           if (limit is String) limit = LuaValue.toFloat(limit);
           if (step is String) step = LuaValue.toFloat(step);
-          slots[a] = Arithmetic.arith(initial, step, ArithOp.luaOpSub, this);
+          if (useInlineRegisterFastPaths && initial is num && step is num) {
+            slots[a] = initial is int && step is int
+                ? initial - step
+                : initial.toDouble() - step.toDouble();
+          } else {
+            slots[a] = Arithmetic.arith(initial, step, ArithOp.luaOpSub, this);
+          }
           slots[a + 1] = limit;
           slots[a + 2] = step;
           stack.pc += (inst >> 14) - Instruction.maxArg_sbx;

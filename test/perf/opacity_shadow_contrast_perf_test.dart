@@ -151,7 +151,9 @@ Future<void> main() async {
       Instructions.useDirectSetList = true;
       Instructions.useDirectTableSet = true;
       LuaStateImpl.useRegisterExecution = true;
-      LuaStateImpl.useRegisterCalls = false;
+      LuaStateImpl.useRegisterCalls = true;
+      LuaStateImpl.useInlineRegisterFastPaths = true;
+      LuaStateImpl.useOpenResultRegisterCalls = false;
       return _runScript(script);
     },
     implementation2: (script) {
@@ -165,10 +167,12 @@ Future<void> main() async {
       Instructions.useDirectTableSet = true;
       LuaStateImpl.useRegisterExecution = true;
       LuaStateImpl.useRegisterCalls = true;
+      LuaStateImpl.useInlineRegisterFastPaths = true;
+      LuaStateImpl.useOpenResultRegisterCalls = true;
       return _runScript(script);
     },
-    impl1Name: 'Register executor',
-    impl2Name: 'Register calls',
+    impl1Name: 'Fixed-result register calls',
+    impl2Name: 'Open-result register calls',
   );
 
   await tester.run(
