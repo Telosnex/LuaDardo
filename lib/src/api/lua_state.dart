@@ -3,6 +3,8 @@ import 'lua_basic_api.dart';
 import 'lua_coroutine.dart';
 import 'lua_debug.dart';
 import '../state/lua_state_impl.dart';
+import '../stdlib/constants.dart'
+    if (dart.library.html) '../stdlib/constants_js.dart';
 
 const luaMinStack = 20;
 const luaMaxStack = 1000000;
@@ -10,8 +12,11 @@ const luaRegistryIndex = -luaMaxStack - 1000;
 const luaMultret = -1;
 const luaRidxGlobals = 2;
 
-const luaMaxInteger = (1 << 63) - 1;
-const luaMinInteger = -1 << 63;
+// 64-bit on the VM and dart2wasm. dart2js has no 64-bit integers, so there
+// they are +-(2^53 - 1), as math.maxinteger is: (1 << 63) - 1 is -1 in
+// JavaScript, and table.move then always failed "destination wrap around".
+const luaMaxInteger = int64MaxValue;
+const luaMinInteger = int64MinValue;
 
 /// Returns the pseudo-index for an upvalue at the given index (1-based).
 /// Use this in Dart closures to access upvalues pushed before the closure.
