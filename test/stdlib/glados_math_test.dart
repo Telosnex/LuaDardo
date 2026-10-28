@@ -1,3 +1,7 @@
+// glados generates inputs with 1 << 32, which is 0 under dart2js.
+@TestOn('!dart2js')
+library;
+
 import 'package:glados/glados.dart';
 import 'package:lua_dardo_plus/lua.dart';
 

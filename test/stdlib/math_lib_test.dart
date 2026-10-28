@@ -1,3 +1,7 @@
+// 64-bit integer literals, which dart2js cannot compile.
+@TestOn('!dart2js')
+library;
+
 import 'dart:math' as math;
 import 'package:lua_dardo_plus/lua.dart';
 import 'package:test/test.dart';

@@ -1,3 +1,7 @@
+// Files, processes and environment variables: the VM only.
+@TestOn('vm')
+library;
+
 import 'dart:io';
 
 import 'package:lua_dardo_plus/lua.dart';

@@ -1,3 +1,9 @@
+// Profiles with dart:io and the VM service.
+@TestOn('vm')
+library;
+
+import 'package:test/test.dart' show TestOn;
+
 // ignore_for_file: avoid_print
 //
 // Benchmarks string.format: original (regex parse + sprintf every call)

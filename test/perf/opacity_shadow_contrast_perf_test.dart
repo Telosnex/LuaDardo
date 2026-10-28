@@ -1,3 +1,9 @@
+// Profiles with dart:io and the VM service.
+@TestOn('vm')
+library;
+
+import 'package:test/test.dart' show TestOn;
+
 // ignore_for_file: avoid_print
 //
 // Reduced version of the Lua workload recovered from step
