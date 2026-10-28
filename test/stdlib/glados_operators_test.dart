@@ -414,7 +414,8 @@ void main() {
           end
           return yielded
         ''', 1);
-        final expected = Iterable.generate(n, (i) => (i + 1) * 10).reduce((a, b) => a + b);
+        final expected =
+            Iterable.generate(n, (i) => (i + 1) * 10).reduce((a, b) => a + b);
         expect(r?[0], equals('$expected'));
       },
     );

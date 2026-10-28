@@ -4,7 +4,6 @@ import '../lexer/token.dart';
 import 'exp_parser.dart';
 
 class PrefixExpParser {
-
   /*
     prefixexp ::= Name
         | ‘(’ exp ‘)’
@@ -17,7 +16,8 @@ class PrefixExpParser {
     if (lexer.LookAhead() == TokenKind.TOKEN_IDENTIFIER) {
       Token id = lexer.nextIdentifier(); // Name
       exp = NameExp(id.line, id.value);
-    } else { // ‘(’ exp ‘)’
+    } else {
+      // ‘(’ exp ‘)’
       exp = parseParensExp(lexer);
     }
     return finishPrefixExp(lexer, exp);
@@ -25,13 +25,13 @@ class PrefixExpParser {
 
   static Exp parseParensExp(Lexer lexer) {
     lexer.nextTokenOfKind(TokenKind.TOKEN_SEP_LPAREN); // (
-    Exp exp = ExpParser.parseExp(lexer);               // exp
+    Exp exp = ExpParser.parseExp(lexer); // exp
     lexer.nextTokenOfKind(TokenKind.TOKEN_SEP_RPAREN); // )
 
-    if (exp is VarargExp
-    || exp is FuncCallExp
-    || exp is NameExp
-    || exp is TableAccessExp) {
+    if (exp is VarargExp ||
+        exp is FuncCallExp ||
+        exp is NameExp ||
+        exp is TableAccessExp) {
       return ParensExp(exp);
     }
 
@@ -42,20 +42,24 @@ class PrefixExpParser {
   static Exp finishPrefixExp(Lexer lexer, Exp exp) {
     while (true) {
       switch (lexer.LookAhead()) {
-        case TokenKind.TOKEN_SEP_LBRACK: { // prefixexp ‘[’ exp ‘]’
-          lexer.nextToken();                       // ‘[’
-          Exp keyExp = ExpParser.parseExp(lexer);            // exp
-          lexer.nextTokenOfKind(TokenKind.TOKEN_SEP_RBRACK); // ‘]’
-          exp = TableAccessExp(lexer.line, exp, keyExp);
-          break;
-        }
-        case TokenKind.TOKEN_SEP_DOT: { // prefixexp ‘.’ Name
-          lexer.nextToken();                   // ‘.’
-          Token name = lexer.nextIdentifier(); // Name
-          Exp keyExp = StringExp.fromToken(name);
-          exp = TableAccessExp(name.line, exp, keyExp);
-          break;
-        }
+        case TokenKind.TOKEN_SEP_LBRACK:
+          {
+            // prefixexp ‘[’ exp ‘]’
+            lexer.nextToken(); // ‘[’
+            Exp keyExp = ExpParser.parseExp(lexer); // exp
+            lexer.nextTokenOfKind(TokenKind.TOKEN_SEP_RBRACK); // ‘]’
+            exp = TableAccessExp(lexer.line, exp, keyExp);
+            break;
+          }
+        case TokenKind.TOKEN_SEP_DOT:
+          {
+            // prefixexp ‘.’ Name
+            lexer.nextToken(); // ‘.’
+            Token name = lexer.nextIdentifier(); // Name
+            Exp keyExp = StringExp.fromToken(name);
+            exp = TableAccessExp(name.line, exp, keyExp);
+            break;
+          }
         case TokenKind.TOKEN_SEP_COLON: // prefixexp ‘:’ Name args
         case TokenKind.TOKEN_SEP_LPAREN:
         case TokenKind.TOKEN_SEP_LCURLY:
@@ -71,10 +75,9 @@ class PrefixExpParser {
   // functioncall ::=  prefixexp args | prefixexp ‘:’ Name args
   static FuncCallExp finishFuncCallExp(Lexer lexer, Exp prefixExp) {
     FuncCallExp fcExp = FuncCallExp(
-      prefixExp: prefixExp,
-      nameExp: parseNameExp(lexer),
-      args: parseArgs(lexer)
-    );
+        prefixExp: prefixExp,
+        nameExp: parseNameExp(lexer),
+        args: parseArgs(lexer));
     fcExp.line = lexer.line; // todo
     fcExp.lastLine = lexer.line;
     return fcExp;

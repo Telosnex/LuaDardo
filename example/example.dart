@@ -1,6 +1,5 @@
 import 'package:lua_dardo_plus/lua.dart';
 
-
 void main(List<String> arguments) {
   LuaState state = LuaState.newState();
   state.openLibs();

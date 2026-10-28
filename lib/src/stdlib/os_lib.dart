@@ -122,19 +122,52 @@ class OSLib {
   }
 
   static const _weekdaysFull = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-    'Friday', 'Saturday', 'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ];
   static const _weekdaysAbbr = [
-    'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
   ];
   static const _monthsFull = [
-    '', 'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    '',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   static const _monthsAbbr = [
-    '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    '',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   static String _pad2(int n) => n.toString().padLeft(2, '0');
@@ -146,36 +179,85 @@ class OSLib {
       if (fmt[i] == '%' && i + 1 < fmt.length) {
         i++;
         switch (fmt[i]) {
-          case 'Y': buf.write(t.year.toString().padLeft(4, '0')); break;
-          case 'y': buf.write(_pad2(t.year % 100)); break;
-          case 'm': buf.write(_pad2(t.month)); break;
-          case 'd': buf.write(_pad2(t.day)); break;
-          case 'H': buf.write(_pad2(t.hour)); break;
-          case 'M': buf.write(_pad2(t.minute)); break;
-          case 'S': buf.write(_pad2(t.second)); break;
-          case 'A': buf.write(_weekdaysFull[t.weekday - 1]); break;
-          case 'a': buf.write(_weekdaysAbbr[t.weekday - 1]); break;
-          case 'B': buf.write(_monthsFull[t.month]); break;
-          case 'b': case 'h': buf.write(_monthsAbbr[t.month]); break;
-          case 'p': buf.write(t.hour < 12 ? 'AM' : 'PM'); break;
-          case 'I': buf.write(_pad2(t.hour == 0 ? 12 : (t.hour > 12 ? t.hour - 12 : t.hour))); break;
-          case 'j': buf.write(_getYearDay(t).toString().padLeft(3, '0')); break;
-          case 'w': buf.write((t.weekday % 7).toString()); break; // 0=Sunday
-          case 'c': buf.write(_strftime('%a %b %d %H:%M:%S %Y', t)); break;
-          case 'x': buf.write('${_pad2(t.month)}/${_pad2(t.day)}/${_pad2(t.year % 100)}'); break;
-          case 'X': buf.write('${_pad2(t.hour)}:${_pad2(t.minute)}:${_pad2(t.second)}'); break;
-          case 'Z': buf.write(t.timeZoneName); break;
+          case 'Y':
+            buf.write(t.year.toString().padLeft(4, '0'));
+            break;
+          case 'y':
+            buf.write(_pad2(t.year % 100));
+            break;
+          case 'm':
+            buf.write(_pad2(t.month));
+            break;
+          case 'd':
+            buf.write(_pad2(t.day));
+            break;
+          case 'H':
+            buf.write(_pad2(t.hour));
+            break;
+          case 'M':
+            buf.write(_pad2(t.minute));
+            break;
+          case 'S':
+            buf.write(_pad2(t.second));
+            break;
+          case 'A':
+            buf.write(_weekdaysFull[t.weekday - 1]);
+            break;
+          case 'a':
+            buf.write(_weekdaysAbbr[t.weekday - 1]);
+            break;
+          case 'B':
+            buf.write(_monthsFull[t.month]);
+            break;
+          case 'b':
+          case 'h':
+            buf.write(_monthsAbbr[t.month]);
+            break;
+          case 'p':
+            buf.write(t.hour < 12 ? 'AM' : 'PM');
+            break;
+          case 'I':
+            buf.write(
+                _pad2(t.hour == 0 ? 12 : (t.hour > 12 ? t.hour - 12 : t.hour)));
+            break;
+          case 'j':
+            buf.write(_getYearDay(t).toString().padLeft(3, '0'));
+            break;
+          case 'w':
+            buf.write((t.weekday % 7).toString());
+            break; // 0=Sunday
+          case 'c':
+            buf.write(_strftime('%a %b %d %H:%M:%S %Y', t));
+            break;
+          case 'x':
+            buf.write(
+                '${_pad2(t.month)}/${_pad2(t.day)}/${_pad2(t.year % 100)}');
+            break;
+          case 'X':
+            buf.write('${_pad2(t.hour)}:${_pad2(t.minute)}:${_pad2(t.second)}');
+            break;
+          case 'Z':
+            buf.write(t.timeZoneName);
+            break;
           case 'z':
             final off = t.timeZoneOffset;
             final sign = off.isNegative ? '-' : '+';
-            buf.write(
-              '$sign${off.inHours.abs().toString().padLeft(2, '0')}'
-              '${(off.inMinutes.abs() % 60).toString().padLeft(2, '0')}');
+            buf.write('$sign${off.inHours.abs().toString().padLeft(2, '0')}'
+                '${(off.inMinutes.abs() % 60).toString().padLeft(2, '0')}');
             break;
-          case '%': buf.write('%'); break;
-          case 'n': buf.write('\n'); break;
-          case 't': buf.write('\t'); break;
-          default: buf.write('%'); buf.write(fmt[i]); break;
+          case '%':
+            buf.write('%');
+            break;
+          case 'n':
+            buf.write('\n');
+            break;
+          case 't':
+            buf.write('\t');
+            break;
+          default:
+            buf.write('%');
+            buf.write(fmt[i]);
+            break;
         }
       } else {
         buf.write(fmt[i]);
@@ -184,17 +266,17 @@ class OSLib {
     return buf.toString();
   }
 
-  static int _getYearDay(DateTime date){
-    var monthDay = [31,28,31,30,31,30,31,31,30,31,30,31];
+  static int _getYearDay(DateTime date) {
+    var monthDay = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-    if(date.year%4==0 && date.year%100!=0) {
+    if (date.year % 4 == 0 && date.year % 100 != 0) {
       monthDay[1] = 29;
-    } else if(date.year%400==0) {
+    } else if (date.year % 400 == 0) {
       monthDay[1] = 29;
     }
 
-    int sum=0;
-    for(var i = 0;i<=date.month-2;i++){
+    int sum = 0;
+    for (var i = 0; i <= date.month - 2; i++) {
       sum += monthDay[i];
     }
 

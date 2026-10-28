@@ -1,8 +1,8 @@
 import 'lua.dart';
 
-_print(int i,LuaType type,[String? value]){
+_print(int i, LuaType type, [String? value]) {
   var msg = "index:$i -> $type";
-  if(value != null) msg += " value:$value";
+  if (value != null) msg += " value:$value";
   print(msg);
 }
 
@@ -14,15 +14,15 @@ extension LuaStateDebug on LuaState {
       LuaType t = type(i);
       switch (type(i)) {
         case LuaType.luaNone:
-          _print(i,t);
+          _print(i, t);
           break;
 
         case LuaType.luaNil:
-          _print(i,t);
+          _print(i, t);
           break;
 
         case LuaType.luaBoolean:
-          _print(i,t,toBoolean(i) ? "true" : "false");
+          _print(i, t, toBoolean(i) ? "true" : "false");
           break;
 
         case LuaType.luaLightUserdata:
@@ -31,30 +31,30 @@ extension LuaStateDebug on LuaState {
 
         case LuaType.luaNumber:
           if (isInteger(i)) {
-            _print(i,t,"(integer)${toInteger(i)}");
+            _print(i, t, "(integer)${toInteger(i)}");
           } else if (isNumber(i)) {
-            _print(i,t,"${toNumber(i)}");
+            _print(i, t, "${toNumber(i)}");
           }
           break;
 
         case LuaType.luaString:
-          _print(i,t,"${toStr(i)}");
+          _print(i, t, "${toStr(i)}");
           break;
 
         case LuaType.luaTable:
-          _print(i,t);
+          _print(i, t);
           break;
 
         case LuaType.luaFunction:
-          _print(i,t);
+          _print(i, t);
           break;
 
         case LuaType.luaUserdata:
-          _print(i,t);
+          _print(i, t);
           break;
 
         case LuaType.luaThread:
-          _print(i,t);
+          _print(i, t);
           break;
       }
     }

@@ -326,7 +326,8 @@ String _runParse(String script) {
 
 void main() async {
   final tester = PerfTester<String, String>(
-    testName: 'StatParser.parseStat: Map<Exp,bool> + List.empty()  vs  Record + const <Exp>[]',
+    testName:
+        'StatParser.parseStat: Map<Exp,bool> + List.empty()  vs  Record + const <Exp>[]',
     testCases: const [
       _modStyle,
       _numeric,

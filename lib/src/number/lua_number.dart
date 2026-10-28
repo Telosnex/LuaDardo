@@ -3,7 +3,6 @@ import 'dart:math' as math;
 class LuaNumber {
   static double _pow2(int exp) => math.pow(2.0, exp).toDouble();
 
-
   static bool isInteger(double f) {
     return f == f.toInt();
   }
@@ -37,8 +36,7 @@ class LuaNumber {
           var fracStr = parts[1];
           var fracPart = fracStr.isEmpty
               ? 0.0
-              : int.parse(fracStr, radix: 16) /
-                  (1 << (fracStr.length * 4));
+              : int.parse(fracStr, radix: 16) / (1 << (fracStr.length * 4));
           mantissa = intPart + fracPart;
         } else {
           mantissa = int.parse(mantissaStr, radix: 16).toDouble();
@@ -50,5 +48,4 @@ class LuaNumber {
       return null;
     }
   }
-
 }

@@ -279,7 +279,8 @@ void main() {
       '''), equals(2));
     });
 
-    test('outer label still visible after inner same-name label exits scope', () {
+    test('outer label still visible after inner same-name label exits scope',
+        () {
       // This is the tricky one: inner ::x:: shadows outer ::x::,
       // but after inner scope ends, outer ::x:: should be visible again
       expect(luaEval(r'''

@@ -67,20 +67,20 @@ void main() {
 
     group('File operations', () {
       test('should detect non-existent file', () {
-        final exists = PlatformServices.instance
-            .fileExists('/non/existent/path/file.txt');
+        final exists =
+            PlatformServices.instance.fileExists('/non/existent/path/file.txt');
         expect(exists, isFalse);
       });
 
       test('should detect non-existent directory', () {
-        final exists = PlatformServices.instance
-            .directoryExists('/non/existent/path');
+        final exists =
+            PlatformServices.instance.directoryExists('/non/existent/path');
         expect(exists, isFalse);
       });
 
       test('should return null for non-existent file read as bytes', () {
-        final bytes = PlatformServices.instance
-            .readFileAsBytes('/non/existent/file.txt');
+        final bytes =
+            PlatformServices.instance.readFileAsBytes('/non/existent/file.txt');
         expect(bytes, isNull);
       });
 
@@ -91,8 +91,8 @@ void main() {
       });
 
       test('should return false for deleting non-existent file', () {
-        final result = PlatformServices.instance
-            .deleteFile('/non/existent/file.txt');
+        final result =
+            PlatformServices.instance.deleteFile('/non/existent/file.txt');
         expect(result, isFalse);
       });
 

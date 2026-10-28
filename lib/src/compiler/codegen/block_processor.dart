@@ -7,7 +7,6 @@ import 'funcinfo.dart';
 import 'stat_processor.dart';
 
 class BlockProcessor {
-
   static void processBlock(FuncInfo fi, Block node) {
     for (Stat stat in node.stats) {
       StatProcessor.processStat(fi, stat);
@@ -46,11 +45,11 @@ class BlockProcessor {
       }
     }
 
-    bool multRet = ExpHelper.isVarargOrFuncCall(exps[nExps-1]);
+    bool multRet = ExpHelper.isVarargOrFuncCall(exps[nExps - 1]);
     for (int i = 0; i < nExps; i++) {
       Exp exp = exps[i];
       int r = fi.allocReg();
-      if (i == nExps-1 && multRet) {
+      if (i == nExps - 1 && multRet) {
         ExpProcessor.processExp(fi, exp, r, -1);
       } else {
         ExpProcessor.processExp(fi, exp, r, 1);
@@ -65,5 +64,4 @@ class BlockProcessor {
       fi.emitReturn(lastLine, a, nExps);
     }
   }
-
 }

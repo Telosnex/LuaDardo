@@ -41,8 +41,7 @@ class CharSequence {
   /// general-purpose String.startsWith scan.
   bool startsWithCodes2(int c0, int c1) {
     if (_pos + 1 >= _len) return false;
-    return _str.codeUnitAt(_pos) == c0 &&
-        _str.codeUnitAt(_pos + 1) == c1;
+    return _str.codeUnitAt(_pos) == c0 && _str.codeUnitAt(_pos + 1) == c1;
   }
 
   /// Fast `startsWith` for three ASCII code units.
@@ -109,7 +108,7 @@ class CharSequence {
 
   String charAt(int index) {
     int i = index + _pos;
-    if(i>=_str.length) return '';
+    if (i >= _str.length) return '';
     return _str[i];
   }
 
@@ -120,7 +119,7 @@ class CharSequence {
   // 是否是空白字符
   static bool isWhiteSpace(String c) {
     switch (c.codeUnitAt(0)) {
-      case 9:  // '\t'
+      case 9: // '\t'
       case 10: // '\n'
       case 11: // '\v'
       case 12: // '\f'
@@ -152,7 +151,7 @@ class CharSequence {
   }
 
   static bool isalnum(String c) {
-    if(c.isEmpty) return false;
+    if (c.isEmpty) return false;
     var code = c.codeUnitAt(0);
     // '0'~'9' or a~z or A~Z
     return code >= 48 && code <= 57 ||
@@ -160,13 +159,13 @@ class CharSequence {
         code >= 65 && code <= 90;
   }
 
-  static int count(String src,String ch){
-    if(src.isEmpty) return 0;
+  static int count(String src, String ch) {
+    if (src.isEmpty) return 0;
 
-    var sum=0;
+    var sum = 0;
     var len = src.length;
-    for(var i = 0; i<len; i++){
-      if(src[i] == ch) sum++;
+    for (var i = 0; i < len; i++) {
+      if (src[i] == ch) sum++;
     }
     return sum;
   }

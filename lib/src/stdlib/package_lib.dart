@@ -10,7 +10,6 @@ const lua_loaded_table = "_LOADED";
 // key, in the registry, for table of preloaded loaders
 const lua_preload_table = "_PRELOAD";
 
-
 const lua_path_sep = ";";
 const lua_path_mark = "?";
 const lua_exec_dir = "!";

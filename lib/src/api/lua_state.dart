@@ -19,8 +19,8 @@ int luaUpvalueIndex(int i) => luaRegistryIndex - i;
 
 /// Abstract base class for Lua state operations.
 /// Combines basic API, auxiliary library, coroutine support, and debug features.
-abstract class LuaState extends LuaBasicAPI implements LuaAuxLib, LuaCoroutineLib, LuaDebug {
-
+abstract class LuaState extends LuaBasicAPI
+    implements LuaAuxLib, LuaCoroutineLib, LuaDebug {
   static LuaState newState() {
     return LuaStateImpl();
   }

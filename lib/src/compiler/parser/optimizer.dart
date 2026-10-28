@@ -5,7 +5,6 @@ import '../ast/exp.dart';
 import '../lexer/token.dart';
 
 class Optimizer {
-
   static Exp optimizeLogicalOr(BinopExp exp) {
     if (isTrue(exp.exp1)) {
       return exp.exp1; // true or x => true
@@ -50,28 +49,24 @@ class Optimizer {
   }
 
   static Exp optimizeArithBinaryOp(BinopExp exp) {
-    if (exp.exp1 is IntegerExp
-        && exp.exp2 is IntegerExp
-    ) {
+    if (exp.exp1 is IntegerExp && exp.exp2 is IntegerExp) {
       IntegerExp x = exp.exp1 as IntegerExp;
       IntegerExp y = exp.exp2 as IntegerExp;
       switch (exp.op) {
         case TokenKind.TOKEN_OP_ADD:
-          return IntegerExp(exp.line, x.val+ y.val);
+          return IntegerExp(exp.line, x.val + y.val);
         case TokenKind.TOKEN_OP_SUB:
-          return IntegerExp(exp.line, x.val- y.val);
+          return IntegerExp(exp.line, x.val - y.val);
         case TokenKind.TOKEN_OP_MUL:
-          return IntegerExp(exp.line, x.val* y.val);
+          return IntegerExp(exp.line, x.val * y.val);
         case TokenKind.TOKEN_OP_IDIV:
           if (y.val != 0) {
-            return IntegerExp(
-                exp.line, (x.val/y.val).floor());
+            return IntegerExp(exp.line, (x.val / y.val).floor());
           }
           break;
         case TokenKind.TOKEN_OP_MOD:
           if (y.val != 0) {
-            return IntegerExp(
-                exp.line, LuaMath.iFloorMod(x.val, y.val));
+            return IntegerExp(exp.line, LuaMath.iFloorMod(x.val, y.val));
           }
           break;
         default:
@@ -107,8 +102,7 @@ class Optimizer {
       }
     }
 
-    return
-      exp;
+    return exp;
   }
 
   static Exp optimizePow(Exp exp) {
@@ -151,14 +145,13 @@ class Optimizer {
 
   static Exp optimizeNot(UnopExp exp) {
     Exp subExp = exp.exp;
-    if (subExp is NilExp
-        || subExp is FalseExp) {
+    if (subExp is NilExp || subExp is FalseExp) {
       return TrueExp(exp.line);
     }
-    if (subExp is TrueExp
-        || subExp is IntegerExp
-        || subExp is FloatExp
-        || subExp is StringExp) {
+    if (subExp is TrueExp ||
+        subExp is IntegerExp ||
+        subExp is FloatExp ||
+        subExp is StringExp) {
       return FalseExp(exp.line);
     }
     return exp;
@@ -181,26 +174,18 @@ class Optimizer {
   }
 
   static bool isFalse(Exp exp) {
-    return exp is FalseExp
-        ||
-        exp
-        is
-        NilExp;
+    return exp is FalseExp || exp is NilExp;
   }
 
   static bool isTrue(Exp exp) {
-    return exp is TrueExp
-        || exp is IntegerExp
-        || exp is FloatExp
-        || exp is StringExp;
+    return exp is TrueExp ||
+        exp is IntegerExp ||
+        exp is FloatExp ||
+        exp is StringExp;
   }
 
   static bool isVarargOrFuncCall(Exp exp) {
-    return exp is VarargExp
-        ||
-        exp
-        is
-        FuncCallExp;
+    return exp is VarargExp || exp is FuncCallExp;
   }
 
   static int? castToInteger(Exp exp) {
@@ -210,9 +195,8 @@ class Optimizer {
     if (exp is FloatExp) {
       double f = exp.val;
       return LuaNumber.isInteger(f) ? f.toInt() : null;
-  }
-    return
-    null;
+    }
+    return null;
   }
 
   static double? castToFloat(Exp exp) {
@@ -224,5 +208,4 @@ class Optimizer {
     }
     return null;
   }
-
 }

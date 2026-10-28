@@ -1213,8 +1213,7 @@ class LuaStateImpl implements LuaState, LuaVM {
         calleeSlots[i] = i < nArgs ? caller.slots[base + i + 1] : null;
       }
       if (consumeVirtualTriple) {
-        callee.virtualSmallTableLength =
-            (marker).length;
+        callee.virtualSmallTableLength = (marker).length;
         callee.virtualTriple1 = caller.slots[base + 2];
         callee.virtualTriple2 = caller.slots[base + 3];
         callee.virtualTriple3 = caller.slots[base + 4];
@@ -2625,8 +2624,7 @@ class LuaStateImpl implements LuaState, LuaVM {
 
   @override
   void loadVararg(int n) {
-    List<Object?>? varargs =
-        _stack!.varargs ?? const <Object>[];
+    List<Object?>? varargs = _stack!.varargs ?? const <Object>[];
     if (n < 0) {
       n = varargs.length;
     }

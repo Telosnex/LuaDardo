@@ -1,7 +1,6 @@
 import 'lua_type.dart';
 
 abstract class LuaAuxLib {
-
 /* Error-report functions */
   int error2(String fmt, [List<Object?>? a]);
 
@@ -64,8 +63,8 @@ abstract class LuaAuxLib {
 
   void openLibs();
 
-  int ref (int t);
-  void unRef (int t, int ref);
+  int ref(int t);
+  void unRef(int t, int ref);
 
   void requireF(String modname, DartFunction openf, bool glb);
 

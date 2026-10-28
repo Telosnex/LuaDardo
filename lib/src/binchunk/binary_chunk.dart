@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'buffer.dart';
 
-const luaSignature = [0x1b,0x4c,0x75,0x61];
+const luaSignature = [0x1b, 0x4c, 0x75, 0x61];
 const luacVersion = 0x53;
 const luacFormat = 0;
 const luacData = [0x19, 0x93, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -111,7 +111,7 @@ class Prototype {
     var len = data.readUint32();
 
     code = Uint32List(len);
-    for(var i = 0;i<len;i++){
+    for (var i = 0; i < len; i++) {
       code[i] = data.readUint32();
     }
 
@@ -155,7 +155,7 @@ class Prototype {
 
     len = data.readUint32();
     lineInfo = Uint32List(len);
-    for(var i = 0;i<len;i++){
+    for (var i = 0; i < len; i++) {
       lineInfo[i] = data.readUint32();
     }
 
@@ -192,7 +192,7 @@ class LocVar {
   int? endPC;
 
   LocVar();
-  LocVar.from(ByteDataReader blob){
+  LocVar.from(ByteDataReader blob) {
     varName = BinaryChunk.getLuaString(blob);
     startPC = blob.readUint32();
     endPC = blob.readUint32();
@@ -202,10 +202,9 @@ class LocVar {
 class BinaryChunk {
   /// 解析二进制
   static Prototype unDump(Uint8List data) {
-    var byteReader = ByteDataReader(endian:Endian.little)
-      ..add(data);
+    var byteReader = ByteDataReader(endian: Endian.little)..add(data);
     _checkHead(byteReader);
-    byteReader.readUint8();// 跳过 size_upvalues
+    byteReader.readUint8(); // 跳过 size_upvalues
     return Prototype.from(byteReader, "");
   }
 

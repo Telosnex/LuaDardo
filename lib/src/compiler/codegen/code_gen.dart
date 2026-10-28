@@ -6,13 +6,9 @@ import 'fi2proto.dart';
 import 'funcinfo.dart';
 
 class CodeGen {
-
   static Prototype genProto(Block chunk) {
-    FuncDefExp fd = FuncDefExp(
-      isVararg: true,
-      block: chunk,
-      parList: List.empty()
-    );
+    FuncDefExp fd =
+        FuncDefExp(isVararg: true, block: chunk, parList: List.empty());
     fd.lastLine = chunk.lastLine;
 
     FuncInfo fi = FuncInfo(null, fd);
@@ -20,5 +16,4 @@ class CodeGen {
     ExpProcessor.processFuncDefExp(fi, fd, 0);
     return Fi2Proto.toProto(fi.subFuncs[0]);
   }
-
 }

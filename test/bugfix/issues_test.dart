@@ -22,7 +22,8 @@ void main() {
       ''');
       state.pCall(0, 1, 0);
       bool found10 = state.toBoolean(-1);
-      expect(found10, isTrue, reason: 'math.random(1, 10) should be able to return 10');
+      expect(found10, isTrue,
+          reason: 'math.random(1, 10) should be able to return 10');
     });
 
     test('math.random should work with negative ranges', () {
@@ -36,7 +37,8 @@ void main() {
       ''');
       state.pCall(0, 1, 0);
       bool validRange = state.toBoolean(-1);
-      expect(validRange, isTrue, reason: 'math.random(-10, 10) should work with negative ranges');
+      expect(validRange, isTrue,
+          reason: 'math.random(-10, 10) should work with negative ranges');
     });
 
     test('math.random lower bound should be included', () {
@@ -57,7 +59,8 @@ void main() {
       ''');
       state.pCall(0, 1, 0);
       bool found1 = state.toBoolean(-1);
-      expect(found1, isTrue, reason: 'math.random(1, 10) should be able to return 1');
+      expect(found1, isTrue,
+          reason: 'math.random(1, 10) should be able to return 1');
     });
 
     test('math.random(n) should return 1 to n inclusive', () {
@@ -208,7 +211,8 @@ void main() {
       ''');
       state.pCall(0, 1, 0);
       bool isNil = state.isNil(-1);
-      expect(isNil, isTrue, reason: 'Early return without value should return nil');
+      expect(isNil, isTrue,
+          reason: 'Early return without value should return nil');
     });
   });
 
@@ -237,7 +241,7 @@ void main() {
       state.pCall(0, 1, 0);
       bool ud2HasNoMetatable = state.toBoolean(-1);
       expect(ud2HasNoMetatable, isTrue,
-        reason: 'Setting metatable on ud1 should not affect ud2');
+          reason: 'Setting metatable on ud1 should not affect ud2');
     });
 
     test('each userdata can have different metatables via Dart API', () {
@@ -277,7 +281,7 @@ notAFunction()
       String errorMsg = state.toStr(-1)!;
       // Error message should contain source file reference and line number
       expect(errorMsg.contains('['), isTrue,
-        reason: 'Error message should contain source/line info: $errorMsg');
+          reason: 'Error message should contain source/line info: $errorMsg');
     });
 
     test('arithmetic error should include type info', () {
@@ -293,7 +297,7 @@ local x = "hello" + 1
 
       String errorMsg = state.toStr(-1)!;
       expect(errorMsg.toLowerCase().contains('arithmetic'), isTrue,
-        reason: 'Error should mention arithmetic: $errorMsg');
+          reason: 'Error should mention arithmetic: $errorMsg');
     });
 
     test('comparison error should include type names', () {
@@ -309,7 +313,7 @@ local result = {} < 5
 
       String errorMsg = state.toStr(-1)!;
       expect(errorMsg.toLowerCase().contains('compare'), isTrue,
-        reason: 'Error should mention compare: $errorMsg');
+          reason: 'Error should mention compare: $errorMsg');
     });
 
     test('table index error should include type info', () {
@@ -326,7 +330,7 @@ local y = x.foo
 
       String errorMsg = state.toStr(-1)!;
       expect(errorMsg.toLowerCase().contains('index'), isTrue,
-        reason: 'Error should mention index: $errorMsg');
+          reason: 'Error should mention index: $errorMsg');
     });
 
     test('concatenation error should have type info', () {
@@ -342,7 +346,7 @@ local x = {} .. "test"
 
       String errorMsg = state.toStr(-1)!;
       expect(errorMsg.toLowerCase().contains('concatenate'), isTrue,
-        reason: 'Error should mention concatenate: $errorMsg');
+          reason: 'Error should mention concatenate: $errorMsg');
     });
 
     test('lua error() function should include line info', () {
@@ -359,7 +363,7 @@ error("custom error message")
       String errorMsg = state.toStr(-1)!;
       expect(errorMsg.contains('custom error message'), isTrue);
       expect(errorMsg.contains('['), isTrue,
-        reason: 'error() should include source info: $errorMsg');
+          reason: 'error() should include source info: $errorMsg');
     });
 
     test('length error should have type info', () {
@@ -374,8 +378,11 @@ local x = #true
       expect(status, equals(ThreadStatus.luaErrRun));
 
       String errorMsg = state.toStr(-1)!;
-      expect(errorMsg.toLowerCase().contains('length') || errorMsg.toLowerCase().contains('boolean'), isTrue,
-        reason: 'Error should mention length or type: $errorMsg');
+      expect(
+          errorMsg.toLowerCase().contains('length') ||
+              errorMsg.toLowerCase().contains('boolean'),
+          isTrue,
+          reason: 'Error should mention length or type: $errorMsg');
     });
   });
 }

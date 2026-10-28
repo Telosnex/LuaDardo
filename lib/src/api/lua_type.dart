@@ -14,22 +14,21 @@ enum LuaType {
   luaNone,
 }
 
-
 /// arithmetic functions
 enum ArithOp {
-  luaOpAdd , // +
-  luaOpSub , // -
-  luaOpMul , // *
-  luaOpMod , // %
-  luaOpPow , // ^
-  luaOpDiv , // /
+  luaOpAdd, // +
+  luaOpSub, // -
+  luaOpMul, // *
+  luaOpMod, // %
+  luaOpPow, // ^
+  luaOpDiv, // /
   luaOpIdiv, // //
   luaOpBand, // &
-  luaOpBor , // |
+  luaOpBor, // |
   luaOpBxor, // ~
-  luaOpShl , // <<
-  luaOpShr , // >>
-  luaOpUnm , // -
+  luaOpShl, // <<
+  luaOpShr, // >>
+  luaOpUnm, // -
   luaOpBnot, // ~
 }
 

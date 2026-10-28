@@ -118,7 +118,8 @@ void main() {
       String result = state.toStr(-2)!;
       int count = state.toInteger(-1);
 
-      expect(result, equals('bba'), reason: 'Only first 2 a should be replaced');
+      expect(result, equals('bba'),
+          reason: 'Only first 2 a should be replaced');
       expect(count, equals(2));
     });
 

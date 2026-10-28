@@ -132,9 +132,9 @@ class PerfTester<Input, Output> {
     String impl2Name = 'Optimized',
     this.equalityCheck,
   }) : implementations = [
-         PerfImpl(impl1Name, implementation1),
-         PerfImpl(impl2Name, implementation2),
-       ];
+          PerfImpl(impl1Name, implementation1),
+          PerfImpl(impl2Name, implementation2),
+        ];
 
   /// Multi-implementation constructor: compares two or more implementations.
   /// The first implementation in the list is the baseline.
@@ -144,9 +144,9 @@ class PerfTester<Input, Output> {
     required this.implementations,
     this.equalityCheck,
   }) : assert(
-         implementations.length >= 2,
-         'Need at least 2 implementations to compare',
-       );
+          implementations.length >= 2,
+          'Need at least 2 implementations to compare',
+        );
 
   // ── Output helpers ──────────────────────────────────────────────────
 
@@ -229,8 +229,7 @@ class PerfTester<Input, Output> {
     Future<T?> Function<T>(
       Future<T> Function() callback, {
       Duration additionalTime,
-    })?
-    runAsync,
+    })? runAsync,
   }) async {
     final totalSteps = 2 + (skipEqualityCheck ? 0 : 1) + (profile ? 1 : 0);
     var step = 0;
@@ -546,9 +545,8 @@ class PerfTester<Input, Output> {
     }) {
       final buf = StringBuffer(label.padRight(maxLabelWidth));
       for (var k = 0; k < n; k++) {
-        final formatted = formatLarge
-            ? formatNumber(vals[k])
-            : vals[k].toStringAsFixed(3);
+        final formatted =
+            formatLarge ? formatNumber(vals[k]) : vals[k].toStringAsFixed(3);
         buf.write(formatted.padRight(colWidths[k]));
       }
 
@@ -612,7 +610,7 @@ class PerfTester<Input, Output> {
     var visMin = allSorted.map((s) => s.first).reduce(math.min);
     var visMax =
         allSorted.map((s) => s[(s.length * 0.99).floor()]).reduce(math.max) *
-        1.2;
+            1.2;
     final absMax = allSorted.map((s) => s.last).reduce(math.max);
     if (visMax > absMax) visMax = absMax;
 
@@ -653,9 +651,8 @@ class PerfTester<Input, Output> {
     }
 
     // Pad label to the longest implementation name (min 15).
-    final maxNameLen = implementations
-        .map((e) => e.name.length)
-        .reduce(math.max);
+    final maxNameLen =
+        implementations.map((e) => e.name.length).reduce(math.max);
     final labelWidth = math.max(15, maxNameLen + 1);
 
     String getDistributionLine(
@@ -670,9 +667,8 @@ class PerfTester<Input, Output> {
 
       // Use square root scaling for better visibility
       for (var count in hist) {
-        var heightRatio = count == 0
-            ? 0
-            : math.sqrt(count) / math.sqrt(maxCount);
+        var heightRatio =
+            count == 0 ? 0 : math.sqrt(count) / math.sqrt(maxCount);
         var height = (heightRatio * 8).round();
         var char = switch (height) {
           0 => ' ',

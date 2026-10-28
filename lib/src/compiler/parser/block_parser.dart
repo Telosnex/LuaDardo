@@ -7,7 +7,6 @@ import 'exp_parser.dart';
 import 'stat_parser.dart';
 
 class BlockParser {
-
   // block ::= {stat} [retstat]
   static Block parseBlock(Lexer lexer) {
     Block block = Block(stats: parseStats(lexer), retExps: parseRetExps(lexer));
@@ -26,7 +25,7 @@ class BlockParser {
     return stats;
   }
 
-   static bool _isReturnOrBlockEnd(TokenKind? kind) {
+  static bool _isReturnOrBlockEnd(TokenKind? kind) {
     switch (kind) {
       case TokenKind.TOKEN_KW_RETURN:
       case TokenKind.TOKEN_EOF:
@@ -70,5 +69,4 @@ class BlockParser {
         return exps;
     }
   }
-
 }

@@ -3,9 +3,7 @@ import 'dart:typed_data';
 import '../../binchunk/binary_chunk.dart';
 import 'funcinfo.dart';
 
-
 class Fi2Proto {
-
   static Prototype toProto(FuncInfo fi) {
     Prototype proto = Prototype();
     proto.lineDefined = fi.line;
@@ -44,12 +42,12 @@ class Fi2Proto {
   }
 
   static List<LocVar> getLocVars(FuncInfo fi) {
-    return fi.locVars.map((locVarInfo){
-    LocVar locVar = LocVar();
-    locVar.varName = locVarInfo.name;
-    locVar.startPC = locVarInfo.startPC;
-    locVar.endPC = locVarInfo.endPC;
-    return locVar;
+    return fi.locVars.map((locVarInfo) {
+      LocVar locVar = LocVar();
+      locVar.varName = locVarInfo.name;
+      locVar.startPC = locVarInfo.startPC;
+      locVar.endPC = locVarInfo.endPC;
+      return locVar;
     }).toList();
   }
 
@@ -59,7 +57,8 @@ class Fi2Proto {
     for (UpvalInfo uvInfo in fi.upvalues.values) {
       Upvalue upval = Upvalue();
       upvals[uvInfo.index] = upval;
-      if (uvInfo.locVarSlot>= 0) { // instack
+      if (uvInfo.locVarSlot >= 0) {
+        // instack
         upval.instack = 1;
         upval.idx = uvInfo.locVarSlot;
       } else {
@@ -76,5 +75,4 @@ class Fi2Proto {
     fi.upvalues.forEach((name, uvInfo) => names[uvInfo.index] = name);
     return names;
   }
-
 }

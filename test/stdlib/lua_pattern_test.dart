@@ -74,15 +74,14 @@ void main() {
     });
 
     test("malformed %b without args throws", () {
-      expect(() => LuaPattern.match('x', '%b{'), throwsA(isA<LuaPatternError>()));
+      expect(
+          () => LuaPattern.match('x', '%b{'), throwsA(isA<LuaPatternError>()));
     });
 
     test('integrates with string.match via VM', () {
       final ls = LuaState.newState();
       ls.openLibs();
-      expect(
-          ls.doString(
-              r'return string.match("hello {foo} world", "(%b{})")'),
+      expect(ls.doString(r'return string.match("hello {foo} world", "(%b{})")'),
           isTrue);
       expect(ls.toStr(-1), '{foo}');
     });
@@ -90,13 +89,11 @@ void main() {
     test('integrates with string.gsub via VM', () {
       final ls = LuaState.newState();
       ls.openLibs();
-      expect(
-          ls.doString(r'''
+      expect(ls.doString(r'''
             local count
             local r, c = string.gsub("a{1}b{2}c{3}", "%b{}", "X")
             return r, c
-          '''),
-          isTrue);
+          '''), isTrue);
       expect(ls.toStr(-2), 'aXbXcX');
       expect(ls.toInteger(-1), 3);
     });
@@ -105,13 +102,13 @@ void main() {
   group('%f frontier pattern', () {
     test('matches transition into letter class', () {
       // Find each word-initial position.
-      final matches = LuaPattern.allMatches(
-          'hello, world!', '%f[%a]%a+').toList();
+      final matches =
+          LuaPattern.allMatches('hello, world!', '%f[%a]%a+').toList();
       expect(matches.length, 2);
-      expect('hello, world!'.substring(matches[0].start, matches[0].end),
-          'hello');
-      expect('hello, world!'.substring(matches[1].start, matches[1].end),
-          'world');
+      expect(
+          'hello, world!'.substring(matches[0].start, matches[0].end), 'hello');
+      expect(
+          'hello, world!'.substring(matches[1].start, matches[1].end), 'world');
     });
 
     test('treats start-of-string boundary as non-class', () {
@@ -125,21 +122,19 @@ void main() {
     test('integrates with string.gmatch via VM', () {
       final ls = LuaState.newState();
       ls.openLibs();
-      expect(
-          ls.doString(r'''
+      expect(ls.doString(r'''
             local result = {}
             for w in string.gmatch("abc 123 def", "%f[%a]%a+") do
               table.insert(result, w)
             end
             return table.concat(result, ",")
-          '''),
-          isTrue);
+          '''), isTrue);
       expect(ls.toStr(-1), 'abc,def');
     });
 
     test('requires [ after %f', () {
-      expect(() => LuaPattern.match('x', '%fx'),
-          throwsA(isA<LuaPatternError>()));
+      expect(
+          () => LuaPattern.match('x', '%fx'), throwsA(isA<LuaPatternError>()));
     });
   });
 
@@ -176,8 +171,7 @@ void main() {
     test('integrates with string.find via VM', () {
       final ls = LuaState.newState();
       ls.openLibs();
-      expect(
-          ls.doString(r'return string.find("xyzxyz", "(xyz)%1")'), isTrue);
+      expect(ls.doString(r'return string.find("xyzxyz", "(xyz)%1")'), isTrue);
       // Stack (top first): capture1, end, start.
       expect(ls.toStr(-1), 'xyz');
       expect(ls.toInteger(-2), 6);
@@ -241,8 +235,8 @@ void main() {
     });
 
     test("unclosed bracket throws", () {
-      expect(() => LuaPattern.match('x', '[abc'),
-          throwsA(isA<LuaPatternError>()));
+      expect(
+          () => LuaPattern.match('x', '[abc'), throwsA(isA<LuaPatternError>()));
     });
   });
 
@@ -258,8 +252,7 @@ void main() {
       final ls = LuaState.newState();
       ls.openLibs();
       expect(
-          ls.doString(r'return (string.gsub("hello", "%a+", "<%0>"))'),
-          isTrue);
+          ls.doString(r'return (string.gsub("hello", "%a+", "<%0>"))'), isTrue);
       expect(ls.toStr(-1), '<hello>');
     });
 

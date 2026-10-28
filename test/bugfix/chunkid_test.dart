@@ -121,8 +121,7 @@ void main() {
           reason: 'error message unexpectedly long: $msg');
     });
 
-    test('error message includes the offending source line as a snippet',
-        () {
+    test('error message includes the offending source line as a snippet', () {
       final ls = LuaState.newState();
       ls.openLibs();
       const source = 'local t = nil\n'

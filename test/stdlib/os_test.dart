@@ -1,9 +1,8 @@
 import 'package:lua_dardo_plus/lua.dart';
 import 'package:test/test.dart';
 
-
-bool testOS(){
-  try{
+bool testOS() {
+  try {
     LuaState state = LuaState.newState();
     state.openLibs();
     state.loadString(r'''
@@ -17,7 +16,7 @@ end
 print('sec:'..(os.clock()-start)) 
 ''');
     state.pCall(0, 0, 1);
-  }catch(e,s){
+  } catch (e, s) {
     print('$e\n$s');
     return false;
   }
@@ -144,7 +143,10 @@ void main() {
     ls.call(0, 1);
     var result = ls.toStr(-1)!;
     // Should look like "Mon Apr 14 15:30:00 2025", not Dart's toString()
-    expect(result, matches(RegExp(r'^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{2}:\d{2}:\d{2} \d{4}$')));
+    expect(
+        result,
+        matches(RegExp(
+            r'^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{2}:\d{2}:\d{2} \d{4}$')));
   });
 
   // ── %Z and %z (timezone specifiers) ────────────────────────────────

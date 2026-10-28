@@ -9,8 +9,22 @@ import 'package:lua_dardo_plus/lua.dart';
 /// captures, and escaped literals.
 extension AnyLuaPattern on Any {
   static final _classes = [
-    '%a', '%d', '%w', '%s', '%l', '%u', '%p', '%x',
-    '%A', '%D', '%W', '%S', '%L', '%U', '%P', '%X',
+    '%a',
+    '%d',
+    '%w',
+    '%s',
+    '%l',
+    '%u',
+    '%p',
+    '%x',
+    '%A',
+    '%D',
+    '%W',
+    '%S',
+    '%L',
+    '%U',
+    '%P',
+    '%X',
   ];
 
   static final _quantifiers = ['', '*', '+', '?', '-'];
@@ -19,8 +33,22 @@ extension AnyLuaPattern on Any {
       'abcdefghijklmnopqrstuvwxyz0123456789 _,;!@#&=~'.split('');
 
   static final _escapedLiterals = [
-    '%(', '%)', '%.', '%[', '%]', '%%', '%^', r'%$',
-    '%{', '%}', '%|', r'%\', '%+', '%*', '%-', '%?',
+    '%(',
+    '%)',
+    '%.',
+    '%[',
+    '%]',
+    '%%',
+    '%^',
+    r'%$',
+    '%{',
+    '%}',
+    '%|',
+    r'%\',
+    '%+',
+    '%*',
+    '%-',
+    '%?',
   ];
 
   static final _bracketItems = [
@@ -89,8 +117,15 @@ extension AnyLuaPattern on Any {
   /// Patterns that match empty strings — common source of infinite loops.
   Generator<String> get emptyMatchPattern {
     return choose([
-      '.-', '%s*', '%d*', '%a*', '%w*', 'x?',
-      '[abc]-', '[%w]*', '()',
+      '.-',
+      '%s*',
+      '%d*',
+      '%a*',
+      '%w*',
+      'x?',
+      '[abc]-',
+      '[%w]*',
+      '()',
     ]);
   }
 
@@ -111,8 +146,16 @@ extension AnyLuaPattern on Any {
   Generator<String> get edgeCaseString {
     return oneOf([
       choose([
-        '', ' ', '\n', '\t', 'aaaa', '   ', '123',
-        'hello world', 'a\nb\nc', r'()|{}\',
+        '',
+        ' ',
+        '\n',
+        '\t',
+        'aaaa',
+        '   ',
+        '123',
+        'hello world',
+        'a\nb\nc',
+        r'()|{}\',
       ]),
       any.letterOrDigits,
     ]);
@@ -281,8 +324,26 @@ void main() {
   // -------- Empty-match patterns --------
 
   group('Empty-match patterns', () {
-    final emptyPats = ['.-', '%s*', '%d*', '%a*', '%w*', 'x?', '[abc]-', r'^.-$'];
-    final inputs = ['', ' ', 'abc', '   ', '123', 'hello world', 'a\nb\nc', '(test)'];
+    final emptyPats = [
+      '.-',
+      '%s*',
+      '%d*',
+      '%a*',
+      '%w*',
+      'x?',
+      '[abc]-',
+      r'^.-$'
+    ];
+    final inputs = [
+      '',
+      ' ',
+      'abc',
+      '   ',
+      '123',
+      'hello world',
+      'a\nb\nc',
+      '(test)'
+    ];
 
     for (final pat in emptyPats) {
       test('gmatch "$pat" terminates on all inputs', () {
@@ -657,8 +718,7 @@ void main() {
           final pos = int.tryParse(r[0]!) ?? -1;
           if (pos > 0) {
             expect(pos, greaterThanOrEqualTo(init),
-                reason:
-                    'find returned pos=$pos < init=$init for "$pattern"');
+                reason: 'find returned pos=$pos < init=$init for "$pattern"');
           }
         }
       },
@@ -737,8 +797,7 @@ void main() {
         ''';
         final r = _runLua(code, 1);
         if (r != null) {
-          expect(r[0], equals('true'),
-              reason: 'reverse is not involution');
+          expect(r[0], equals('true'), reason: 'reverse is not involution');
         }
       },
     );
@@ -757,8 +816,7 @@ void main() {
         ''';
         final r = _runLua(code, 1);
         if (r != null) {
-          expect(r[0], equals('true'),
-              reason: 'lower not idempotent');
+          expect(r[0], equals('true'), reason: 'lower not idempotent');
         }
       },
     );
@@ -773,8 +831,7 @@ void main() {
         ''';
         final r = _runLua(code, 1);
         if (r != null) {
-          expect(r[0], equals('true'),
-              reason: 'upper not idempotent');
+          expect(r[0], equals('true'), reason: 'upper not idempotent');
         }
       },
     );
@@ -788,8 +845,7 @@ void main() {
         ''';
         final r = _runLua(code, 2);
         if (r != null) {
-          expect(r[0], equals(r[1]),
-              reason: 'lower changed string length');
+          expect(r[0], equals(r[1]), reason: 'lower changed string length');
         }
       },
     );
@@ -844,8 +900,7 @@ void main() {
         ''';
         final r = _runLua(code, 1);
         if (r != null) {
-          expect(r[0], equals('true'),
-              reason: 'byte/char round-trip failed');
+          expect(r[0], equals('true'), reason: 'byte/char round-trip failed');
         }
       },
     );
@@ -881,8 +936,7 @@ void main() {
         ''';
         final r = _runLua(code, 2);
         if (r != null) {
-          expect(r[0], equals(r[1]),
-              reason: 'format %%d != tostring for $n');
+          expect(r[0], equals(r[1]), reason: 'format %%d != tostring for $n');
         }
       },
     );
@@ -896,8 +950,7 @@ void main() {
         ''';
         final r = _runLua(code, 1);
         if (r != null) {
-          expect(r[0], equals('true'),
-              reason: 'format %%s != s');
+          expect(r[0], equals('true'), reason: 'format %%s != s');
         }
       },
     );
@@ -1027,8 +1080,7 @@ void main() {
     });
 
     test('backslash is literal', () {
-      expect(
-          _runLua(r'return string.find("a\\b", "\\")', 2)?[0], equals('2'));
+      expect(_runLua(r'return string.find("a\\b", "\\")', 2)?[0], equals('2'));
     });
 
     test('dollar mid-pattern is literal', () {

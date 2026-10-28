@@ -79,12 +79,10 @@ class LuaPattern {
       c == 0x0A || // \n
       c == 0x0B || // \v
       c == 0x0C || // \f
-      c == 0x0D;   // \r
+      c == 0x0D; // \r
   static bool _isCntrl(int c) => c < 0x20 || c == 0x7F;
   static bool _isXdigit(int c) =>
-      _isDigit(c) ||
-      (c >= 0x41 && c <= 0x46) ||
-      (c >= 0x61 && c <= 0x66);
+      _isDigit(c) || (c >= 0x41 && c <= 0x46) || (c >= 0x61 && c <= 0x66);
   static bool _isGraph(int c) => c > 0x20 && c < 0x7F;
   static bool _isPunct(int c) => _isGraph(c) && !_isAlnum(c);
 
@@ -242,13 +240,11 @@ class LuaPattern {
             // Frontier pattern: %f[set].
             pIdx += 2;
             if (pIdx >= ms.pEnd || ms.pat.codeUnitAt(pIdx) != 0x5B) {
-              throw LuaPatternError(
-                  "missing '[' after '%f' in pattern");
+              throw LuaPatternError("missing '[' after '%f' in pattern");
             }
             final ep = _classEnd(ms, pIdx); // past ']'
             final prev = (sIdx == 0) ? 0 : ms.src.codeUnitAt(sIdx - 1);
-            final curr =
-                (sIdx < ms.src.length) ? ms.src.codeUnitAt(sIdx) : 0;
+            final curr = (sIdx < ms.src.length) ? ms.src.codeUnitAt(sIdx) : 0;
             if (!_matchBracketClass(prev, ms, pIdx, ep - 1) &&
                 _matchBracketClass(curr, ms, pIdx, ep - 1)) {
               pIdx = ep;
@@ -376,8 +372,7 @@ class LuaPattern {
         p++;
         if (_matchClass(c, ms.pat.codeUnitAt(p))) return sig;
         p++;
-      } else if (p + 2 < ec &&
-          ms.pat.codeUnitAt(p + 1) == 0x2D /* '-' */) {
+      } else if (p + 2 < ec && ms.pat.codeUnitAt(p + 1) == 0x2D /* '-' */) {
         final lo = ch;
         final hi = ms.pat.codeUnitAt(p + 2);
         if (lo <= c && c <= hi) return sig;
@@ -396,8 +391,7 @@ class LuaPattern {
   /// `null` on failure.
   static int? _matchBalance(_MatchState ms, int sIdx, int pIdx) {
     if (pIdx + 1 >= ms.pEnd) {
-      throw LuaPatternError(
-          "malformed pattern (missing arguments to '%b')");
+      throw LuaPatternError("malformed pattern (missing arguments to '%b')");
     }
     if (sIdx >= ms.src.length) return null;
     final open = ms.pat.codeUnitAt(pIdx);
@@ -470,8 +464,7 @@ class LuaPattern {
 
   /// Port of `start_capture`: begin a new capture (either an unfinished
   /// substring capture or a zero-width position capture).
-  static int? _startCapture(
-      _MatchState ms, int sIdx, int pIdx, int kind) {
+  static int? _startCapture(_MatchState ms, int sIdx, int pIdx, int kind) {
     if (ms.captures.length >= _lMaxCaptures) {
       throw LuaPatternError('too many captures');
     }

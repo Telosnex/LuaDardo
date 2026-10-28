@@ -12,8 +12,7 @@ import 'dart:typed_data';
 import 'platform_io.dart' if (dart.library.js_interop) 'platform_web.dart'
     as platform_impl;
 
-export 'platform_io.dart'
-    if (dart.library.js_interop) 'platform_web.dart';
+export 'platform_io.dart' if (dart.library.js_interop) 'platform_web.dart';
 
 /// Abstract interface for platform-specific services.
 ///

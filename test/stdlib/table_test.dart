@@ -1,9 +1,8 @@
 import 'package:lua_dardo_plus/lua.dart';
 import 'package:test/test.dart';
 
-
-bool testTable(){
-  try{
+bool testTable() {
+  try {
     LuaState state = LuaState.newState();
     state.openLibs();
     state.loadString(r'''
@@ -25,7 +24,7 @@ table.move(a1 ,1,#a1,4)
 print(table.concat(a1, ",")) 
 ''');
     state.pCall(0, 0, 1);
-  }catch(e,s){
+  } catch (e, s) {
     print('$e\n$s');
     return false;
   }

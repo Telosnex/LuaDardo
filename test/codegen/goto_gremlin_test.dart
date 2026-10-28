@@ -46,7 +46,9 @@ void main() {
       '''), equals(199));
     });
 
-    test('closure captures local, local mutated, goto out, closure sees mutation', () {
+    test(
+        'closure captures local, local mutated, goto out, closure sees mutation',
+        () {
       expect(luaEval(r'''
         local f
         do
@@ -63,7 +65,8 @@ void main() {
       '''), equals(5));
     });
 
-    test('nested closures: inner captures outer local, goto kills outer scope', () {
+    test('nested closures: inner captures outer local, goto kills outer scope',
+        () {
       expect(luaEval(r'''
         local result
         do
@@ -136,7 +139,8 @@ void main() {
       '''), equals(123));
     });
 
-    test('closure captures local from OUTER scope, goto exits INNER scope only', () {
+    test('closure captures local from OUTER scope, goto exits INNER scope only',
+        () {
       // The upvalue is in scope 1, goto exits scope 2.
       // The upvalue should NOT be closed prematurely.
       expect(luaEval(r'''
@@ -376,7 +380,8 @@ void main() {
         goto loop
         ::done::
         return r
-      '''), equals("1,2,Fizz,4,Buzz,Fizz,7,8,Fizz,Buzz,11,Fizz,13,14,FizzBuzz,"));
+      '''),
+          equals("1,2,Fizz,4,Buzz,Fizz,7,8,Fizz,Buzz,11,Fizz,13,14,FizzBuzz,"));
     });
 
     test('goto-based binary search', () {
@@ -942,7 +947,8 @@ void main() {
       '''), equals("ok"));
     });
 
-    test('multiple gotos from different scopes to same label, varying depths', () {
+    test('multiple gotos from different scopes to same label, varying depths',
+        () {
       expect(luaEval(r'''
         local r = ""
         local path = 1

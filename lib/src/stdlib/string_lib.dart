@@ -189,7 +189,7 @@ class StringLib {
     var nArgs = ls.getTop();
 
     // s = make([]byte, nArgs)
-    var s = List<int>.filled(nArgs,0);
+    var s = List<int>.filled(nArgs, 0);
     for (var i = 1; i <= nArgs; i++) {
       var c = ls.checkInteger(i)!;
       ls.argCheck((c & 0xff) == c, i, "value out of range");
@@ -226,14 +226,28 @@ class StringLib {
   /// [opt] is the format char, [n] is the optional size argument.
   static int _packOptSize(String opt, int n) {
     switch (opt) {
-      case 'b': case 'B': return 1;
-      case 'h': case 'H': return 2;
-      case 'i': case 'I': return n;
-      case 'l': case 'L': return 8;
-      case 'j': case 'J': return 8;
-      case 'f': return 4;
-      case 'd': case 'n': return 8;
-      default: return 0;
+      case 'b':
+      case 'B':
+        return 1;
+      case 'h':
+      case 'H':
+        return 2;
+      case 'i':
+      case 'I':
+        return n;
+      case 'l':
+      case 'L':
+        return 8;
+      case 'j':
+      case 'J':
+        return 8;
+      case 'f':
+        return 4;
+      case 'd':
+      case 'n':
+        return 8;
+      default:
+        return 0;
     }
   }
 
@@ -247,22 +261,42 @@ class StringLib {
     while (i < fmt.length) {
       var c = fmt[i];
       switch (c) {
-        case '<': endian = Endian.little; i++; break;
-        case '>': case '!': endian = Endian.big; i++; break;
-        case '=': endian = Endian.host; i++; break;
-        case ' ': i++; break;
-        case 'b': case 'B':
-        case 'h': case 'H':
-        case 'l': case 'L':
-        case 'j': case 'J':
-        case 'f': case 'd': case 'n':
+        case '<':
+          endian = Endian.little;
+          i++;
+          break;
+        case '>':
+        case '!':
+          endian = Endian.big;
+          i++;
+          break;
+        case '=':
+          endian = Endian.host;
+          i++;
+          break;
+        case ' ':
+          i++;
+          break;
+        case 'b':
+        case 'B':
+        case 'h':
+        case 'H':
+        case 'l':
+        case 'L':
+        case 'j':
+        case 'J':
+        case 'f':
+        case 'd':
+        case 'n':
           result.add({'opt': c, 'size': _packOptSize(c, 0), 'endian': endian});
           i++;
           break;
-        case 'i': case 'I':
+        case 'i':
+        case 'I':
           i++;
           var n = 4; // default int size
-          if (i < fmt.length && fmt[i].codeUnitAt(0) >= 49 /* '1' */ &&
+          if (i < fmt.length &&
+              fmt[i].codeUnitAt(0) >= 49 /* '1' */ &&
               fmt[i].codeUnitAt(0) <= 57 /* '9' */) {
             n = int.parse(fmt[i]);
             i++;
@@ -272,7 +306,8 @@ class StringLib {
         case 's':
           i++;
           var n = 8; // default size_t length prefix size
-          if (i < fmt.length && fmt[i].codeUnitAt(0) >= 49 &&
+          if (i < fmt.length &&
+              fmt[i].codeUnitAt(0) >= 49 &&
               fmt[i].codeUnitAt(0) <= 57) {
             n = int.parse(fmt[i]);
             i++;
@@ -295,41 +330,69 @@ class StringLib {
     return result;
   }
 
-  static void _packWriteInt(ByteData bd, int offset, int size, int value, Endian endian) {
+  static void _packWriteInt(
+      ByteData bd, int offset, int size, int value, Endian endian) {
     switch (size) {
-      case 1: bd.setInt8(offset, value); break;
-      case 2: bd.setInt16(offset, value, endian); break;
-      case 4: bd.setInt32(offset, value, endian); break;
-      case 8: bd.setInt64(offset, value, endian); break;
+      case 1:
+        bd.setInt8(offset, value);
+        break;
+      case 2:
+        bd.setInt16(offset, value, endian);
+        break;
+      case 4:
+        bd.setInt32(offset, value, endian);
+        break;
+      case 8:
+        bd.setInt64(offset, value, endian);
+        break;
     }
   }
 
-  static void _packWriteUint(ByteData bd, int offset, int size, int value, Endian endian) {
+  static void _packWriteUint(
+      ByteData bd, int offset, int size, int value, Endian endian) {
     switch (size) {
-      case 1: bd.setUint8(offset, value); break;
-      case 2: bd.setUint16(offset, value, endian); break;
-      case 4: bd.setUint32(offset, value, endian); break;
-      case 8: bd.setUint64(offset, value, endian); break;
+      case 1:
+        bd.setUint8(offset, value);
+        break;
+      case 2:
+        bd.setUint16(offset, value, endian);
+        break;
+      case 4:
+        bd.setUint32(offset, value, endian);
+        break;
+      case 8:
+        bd.setUint64(offset, value, endian);
+        break;
     }
   }
 
   static int _packReadInt(ByteData bd, int offset, int size, Endian endian) {
     switch (size) {
-      case 1: return bd.getInt8(offset);
-      case 2: return bd.getInt16(offset, endian);
-      case 4: return bd.getInt32(offset, endian);
-      case 8: return bd.getInt64(offset, endian);
-      default: return 0;
+      case 1:
+        return bd.getInt8(offset);
+      case 2:
+        return bd.getInt16(offset, endian);
+      case 4:
+        return bd.getInt32(offset, endian);
+      case 8:
+        return bd.getInt64(offset, endian);
+      default:
+        return 0;
     }
   }
 
   static int _packReadUint(ByteData bd, int offset, int size, Endian endian) {
     switch (size) {
-      case 1: return bd.getUint8(offset);
-      case 2: return bd.getUint16(offset, endian);
-      case 4: return bd.getUint32(offset, endian);
-      case 8: return bd.getUint64(offset, endian);
-      default: return 0;
+      case 1:
+        return bd.getUint8(offset);
+      case 2:
+        return bd.getUint16(offset, endian);
+      case 4:
+        return bd.getUint32(offset, endian);
+      case 8:
+        return bd.getUint64(offset, endian);
+      default:
+        return 0;
     }
   }
 
@@ -342,13 +405,24 @@ class StringLib {
     for (var op in ops) {
       String opt = op['opt'];
       switch (opt) {
-        case 'b': case 'B': case 'h': case 'H':
-        case 'i': case 'I': case 'l': case 'L':
-        case 'j': case 'J': case 'f': case 'd':
-        case 'n': case 'x':
+        case 'b':
+        case 'B':
+        case 'h':
+        case 'H':
+        case 'i':
+        case 'I':
+        case 'l':
+        case 'L':
+        case 'j':
+        case 'J':
+        case 'f':
+        case 'd':
+        case 'n':
+        case 'x':
           size += op['size'] as int;
           break;
-        case 's': case 'z':
+        case 's':
+        case 'z':
           throw Exception("variable-size format '$opt' in packsize");
       }
     }
@@ -369,9 +443,19 @@ class StringLib {
       String opt = op['opt'];
       int sz = op['size'];
       switch (opt) {
-        case 'b': case 'B': case 'h': case 'H':
-        case 'i': case 'I': case 'l': case 'L':
-        case 'j': case 'J': case 'f': case 'd': case 'n':
+        case 'b':
+        case 'B':
+        case 'h':
+        case 'H':
+        case 'i':
+        case 'I':
+        case 'l':
+        case 'L':
+        case 'j':
+        case 'J':
+        case 'f':
+        case 'd':
+        case 'n':
           totalSize += sz;
           argIdx++;
           break;
@@ -401,12 +485,20 @@ class StringLib {
       int sz = op['size'];
       Endian endian = op['endian'];
       switch (opt) {
-        case 'b': case 'h': case 'i': case 'l': case 'j':
+        case 'b':
+        case 'h':
+        case 'i':
+        case 'l':
+        case 'j':
           _packWriteInt(bd, offset, sz, ls.checkInteger(argIdx)!, endian);
           offset += sz;
           argIdx++;
           break;
-        case 'B': case 'H': case 'I': case 'L': case 'J':
+        case 'B':
+        case 'H':
+        case 'I':
+        case 'L':
+        case 'J':
           _packWriteUint(bd, offset, sz, ls.checkInteger(argIdx)!, endian);
           offset += sz;
           argIdx++;
@@ -416,7 +508,8 @@ class StringLib {
           offset += 4;
           argIdx++;
           break;
-        case 'd': case 'n':
+        case 'd':
+        case 'n':
           bd.setFloat64(offset, ls.checkNumber(argIdx)!, endian);
           offset += 8;
           argIdx++;
@@ -465,12 +558,20 @@ class StringLib {
       int sz = op['size'];
       Endian endian = op['endian'];
       switch (opt) {
-        case 'b': case 'h': case 'i': case 'l': case 'j':
+        case 'b':
+        case 'h':
+        case 'i':
+        case 'l':
+        case 'j':
           ls.pushInteger(_packReadInt(bd, offset, sz, endian));
           offset += sz;
           nResults++;
           break;
-        case 'B': case 'H': case 'I': case 'L': case 'J':
+        case 'B':
+        case 'H':
+        case 'I':
+        case 'L':
+        case 'J':
           ls.pushInteger(_packReadUint(bd, offset, sz, endian));
           offset += sz;
           nResults++;
@@ -480,7 +581,8 @@ class StringLib {
           offset += 4;
           nResults++;
           break;
-        case 'd': case 'n':
+        case 'd':
+        case 'n':
           ls.pushNumber(bd.getFloat64(offset, endian));
           offset += 8;
           nResults++;
@@ -584,7 +686,9 @@ class StringLib {
     // --- fast path: bare %d / %i / %s / %c (length == 2, no flags/width) ----
     if (tag.length == 2) {
       switch (spec) {
-        case 'd': case 'i': case 'u':
+        case 'd':
+        case 'i':
+        case 'u':
           return ls.toInteger(argIdx).toString();
         case 's':
           return ls.toString2(argIdx);
@@ -619,10 +723,18 @@ class StringLib {
     // flags
     while (i < end) {
       final c = tag.codeUnitAt(i);
-      if (c == 0x2D /* - */) { leftAlign = true; i++; }
-      else if (c == 0x30 /* 0 */) { zeroPad = true; i++; }
-      else if (c == 0x20 || c == 0x2B || c == 0x23) { return null; } // ' +#'
-      else { break; }
+      if (c == 0x2D /* - */) {
+        leftAlign = true;
+        i++;
+      } else if (c == 0x30 /* 0 */) {
+        zeroPad = true;
+        i++;
+      } else if (c == 0x20 || c == 0x2B || c == 0x23) {
+        return null;
+      } // ' +#'
+      else {
+        break;
+      }
     }
 
     // width
@@ -693,13 +805,27 @@ class StringLib {
     for (var i = 0; i < s.length; i++) {
       final c = s[i];
       switch (c) {
-        case '\\': buf.write('\\\\'); break;
-        case '"': buf.write('\\"'); break;
-        case '\n': buf.write('\\n'); break;
-        case '\r': buf.write('\\r'); break;
-        case '\x00': buf.write('\\0'); break;
-        case '\x1a': buf.write('\\26'); break;
-        default: buf.write(c); break;
+        case '\\':
+          buf.write('\\\\');
+          break;
+        case '"':
+          buf.write('\\"');
+          break;
+        case '\n':
+          buf.write('\\n');
+          break;
+        case '\r':
+          buf.write('\\r');
+          break;
+        case '\x00':
+          buf.write('\\0');
+          break;
+        case '\x1a':
+          buf.write('\\26');
+          break;
+        default:
+          buf.write(c);
+          break;
       }
     }
     buf.write('"');
@@ -862,7 +988,10 @@ class StringLib {
     }
     return [
       for (final c in m.captures)
-        if (c is StringCapture) c.value else (c as PositionCapture).position.toString(),
+        if (c is StringCapture)
+          c.value
+        else
+          (c as PositionCapture).position.toString(),
     ];
   }
 
@@ -975,8 +1104,7 @@ class StringLib {
           }
           i++;
         } else {
-          throw LuaPatternError(
-              "invalid use of '%' in replacement string");
+          throw LuaPatternError("invalid use of '%' in replacement string");
         }
       } else {
         buf.write(ch);

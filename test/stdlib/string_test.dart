@@ -1,9 +1,8 @@
 import 'package:lua_dardo_plus/lua.dart';
 import 'package:test/test.dart';
 
-
-bool testString(){
-  try{
+bool testString() {
+  try {
     LuaState state = LuaState.newState();
     state.openLibs();
     state.loadString(r'''
@@ -34,7 +33,7 @@ print(string.find("8Abca23", "Ab"))
 print(string.match("abc123ABC456", "ABC"))
 ''');
     state.pCall(0, 0, 1);
-  }catch(e,s){
+  } catch (e, s) {
     print('$e\n$s');
     return false;
   }
@@ -98,7 +97,7 @@ void main() {
     ls.openLibs();
     ls.loadString(r'return string.find("2026-02-27", "(%d+)-(%d+)-(%d+)")');
     ls.call(0, 5);
-    expect(ls.toInteger(-5), equals(1));  // start
+    expect(ls.toInteger(-5), equals(1)); // start
     expect(ls.toInteger(-4), equals(10)); // end
     expect(ls.toStr(-3), equals('2026'));
     expect(ls.toStr(-2), equals('02'));
@@ -464,8 +463,8 @@ void main() {
       return a, b
     ''');
     ls.call(0, 2);
-    expect(ls.toInteger(-2), equals(1));  // high byte
-    expect(ls.toInteger(-1), equals(0));  // low byte
+    expect(ls.toInteger(-2), equals(1)); // high byte
+    expect(ls.toInteger(-1), equals(0)); // low byte
   });
 
   // ---- Bug fixes: luaPatternToRegex correctness ----
@@ -583,7 +582,7 @@ void main() {
     // "()" should match: %(- matches empty, %) matches )
     // Actually %(- matches zero (s, then %) matches )
     // The full match on "()" is "()"
-    ls.loadString(r'return string.match("()", "%(-%)")') ;
+    ls.loadString(r'return string.match("()", "%(-%)")');
     ls.call(0, 1);
     expect(ls.toStr(-1), equals('()'));
   });
