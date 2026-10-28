@@ -6,6 +6,7 @@ import 'package:sprintf/sprintf.dart';
 import '../api/lua_state.dart';
 import '../api/lua_type.dart';
 import '../binchunk/binary_chunk.dart';
+import '../binchunk/int64_bytes.dart' as int64;
 import '../state/closure.dart';
 import '../state/lua_state_impl.dart';
 import 'lua_pattern.dart';
@@ -343,7 +344,7 @@ class StringLib {
         bd.setInt32(offset, value, endian);
         break;
       case 8:
-        bd.setInt64(offset, value, endian);
+        int64.setInt64(bd, offset, value, endian);
         break;
     }
   }
@@ -361,7 +362,7 @@ class StringLib {
         bd.setUint32(offset, value, endian);
         break;
       case 8:
-        bd.setUint64(offset, value, endian);
+        int64.setUint64(bd, offset, value, endian);
         break;
     }
   }
@@ -375,7 +376,7 @@ class StringLib {
       case 4:
         return bd.getInt32(offset, endian);
       case 8:
-        return bd.getInt64(offset, endian);
+        return int64.getInt64(bd, offset, endian);
       default:
         return 0;
     }
@@ -390,7 +391,7 @@ class StringLib {
       case 4:
         return bd.getUint32(offset, endian);
       case 8:
-        return bd.getUint64(offset, endian);
+        return int64.getUint64(bd, offset, endian);
       default:
         return 0;
     }

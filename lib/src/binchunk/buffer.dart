@@ -3,6 +3,8 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'int64_bytes.dart' as int64;
+
 /// Read [stream] into a String.
 ///
 /// Defaults to [utf8] if no [encoding] is given.
@@ -238,7 +240,7 @@ class ByteDataWriter {
 
   void writeInt64(int value, [Endian? endian]) {
     _init(8);
-    _data.setInt64(_offset, value, endian ?? this.endian);
+    int64.setInt64(_data, _offset, value, endian ?? this.endian);
     _offset += 8;
   }
 
@@ -282,7 +284,7 @@ class ByteDataWriter {
 
   void writeUint64(int value, [Endian? endian]) {
     _init(8);
-    _data.setUint64(_offset, value, endian ?? this.endian);
+    int64.setUint64(_data, _offset, value, endian ?? this.endian);
     _offset += 8;
   }
 
@@ -485,7 +487,7 @@ class ByteDataReader {
 
   int readInt64([Endian? endian]) {
     _init(8);
-    final value = _data.getInt64(_offset, endian ?? this.endian);
+    final value = int64.getInt64(_data, _offset, endian ?? this.endian);
     _offset += 8;
     return value;
   }
@@ -529,7 +531,7 @@ class ByteDataReader {
 
   int readUint64([Endian? endian]) {
     _init(8);
-    final value = _data.getUint64(_offset, endian ?? this.endian);
+    final value = int64.getUint64(_data, _offset, endian ?? this.endian);
     _offset += 8;
     return value;
   }
