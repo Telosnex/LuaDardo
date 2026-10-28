@@ -67,9 +67,9 @@ class FuncInfo {
   int maxRegs = 0;
   int scopeLv = 0;
   List<LocVarInfo> locVars = <LocVarInfo>[];
-  Map<String?, LocVarInfo?> locNames = Map<String?, LocVarInfo?>();
-  Map<String?, UpvalInfo> upvalues = Map<String?, UpvalInfo>();
-  Map<Object?, int> constants = Map<Object?, int>();
+  Map<String?, LocVarInfo?> locNames = <String?, LocVarInfo?>{};
+  Map<String?, UpvalInfo> upvalues = <String?, UpvalInfo>{};
+  Map<Object?, int> constants = <Object?, int>{};
   List<List<int>?> breaks = <List<int>?>[];
   Map<String, LabelInfo> labels = {};
   List<GotoInfo> pendingGotos = [];
@@ -80,8 +80,7 @@ class FuncInfo {
   int? numParams;
   bool? isVararg;
 
-  FuncInfo(FuncInfo? parent, FuncDefExp fd) {
-    this.parent = parent;
+  FuncInfo(this.parent, FuncDefExp fd) {
     line = fd.line;
     lastLine = fd.lastLine;
     numParams = fd.parList.length;
@@ -157,12 +156,12 @@ class FuncInfo {
 
     if (pendingBreakJmps != null) {
       int a = getJmpArgA();
-      for (int _pc in pendingBreakJmps) {
-        int sBx = pc() - _pc;
+      for (int breakPc in pendingBreakJmps) {
+        int sBx = pc() - breakPc;
         int i = LuaMath.toInt32((sBx + Instruction.maxArg_sbx) << 14) | 
         LuaMath.toInt32(a << 6) | 
         OpCodeKind.JMP.index;
-        insts[_pc] = i;
+        insts[breakPc] = i;
       }
     }
     

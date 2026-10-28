@@ -2,6 +2,7 @@
 ///
 /// This file is imported on web platforms where dart:io is not available.
 /// Most file system and process operations throw UnsupportedError.
+library;
 
 import 'dart:typed_data';
 

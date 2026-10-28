@@ -72,7 +72,7 @@ class PackageLib {
 
     if (ls.getField(-1, name) == LuaType.luaNil) {
       /* not found? */
-      ls.pushString("\n\tno field package.preload['" + name! + "']");
+      ls.pushString("\n\tno field package.preload['${name!}']");
     }
     return 1;
   }

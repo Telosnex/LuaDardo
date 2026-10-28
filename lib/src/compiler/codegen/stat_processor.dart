@@ -397,7 +397,7 @@ class StatProcessor {
     int lastLine = node.lastLine;
     for (int i = 0; i < node.varList.length; i++) {
       Exp? exp = node.varList[i];
-      if (! (exp is NameExp)) {
+      if (exp is! NameExp) {
         fi.emitSetTable(lastLine, tRegs[i], kRegs[i], vRegs[i]);
         continue;
       }

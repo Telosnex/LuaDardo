@@ -23,6 +23,8 @@ const tag_integer = 0x13;
 const tag_short_str = 0x04;
 const tag_long_str = 0x14;
 
+// Documents the header that BinaryChunk._checkHead reads; not instantiated.
+// ignore: unused_element
 class _Header {
   /// 签名。二进制文件的魔数:0x1B4C7561
   Uint8List signature = Uint8List(4);
@@ -198,8 +200,6 @@ class LocVar {
 }
 
 class BinaryChunk {
-  _Header? header;
-
   /// 解析二进制
   static Prototype unDump(Uint8List data) {
     var byteReader = ByteDataReader(endian:Endian.little)
@@ -214,51 +214,51 @@ class BinaryChunk {
 
     for (var i = 0; i < 4; i++) {
       if (luaSignature[i] != magicNum[i]) {
-        throw new Exception("not a precompiled chunk!");
+        throw Exception("not a precompiled chunk!");
       }
     }
 
     if (luacVersion != blob.readUint8()) {
-      throw new Exception("version mismatch!");
+      throw Exception("version mismatch!");
     }
 
     if (luacFormat != blob.readUint8()) {
-      throw new Exception("format mismatch!");
+      throw Exception("format mismatch!");
     }
 
     var data = blob.read(6);
     for (var i = 0; i < 6; i++) {
       if (data[i] != luacData[i]) {
-        throw new Exception("LUAC_DATA corrupted!");
+        throw Exception("LUAC_DATA corrupted!");
       }
     }
 
     if (cintSize != blob.readUint8()) {
-      throw new Exception("int size mismatch!");
+      throw Exception("int size mismatch!");
     }
 
     if (csizetSize != blob.readUint8()) {
-      throw new Exception("size_t size mismatch!");
+      throw Exception("size_t size mismatch!");
     }
 
     if (instructionSize != blob.readUint8()) {
-      throw new Exception("instruction size mismatch!");
+      throw Exception("instruction size mismatch!");
     }
 
     if (luaIntegerSize != blob.readUint8()) {
-      throw new Exception("lua_Integer size mismatch!");
+      throw Exception("lua_Integer size mismatch!");
     }
 
     if (luaNumberSize != blob.readUint8()) {
-      throw new Exception("lua_Number size mismatch!");
+      throw Exception("lua_Number size mismatch!");
     }
 
     if (luacInt != blob.readUint64()) {
-      throw new Exception("endianness mismatch!");
+      throw Exception("endianness mismatch!");
     }
 
     if (luacNum != blob.readFloat64()) {
-      throw new Exception("float format mismatch!");
+      throw Exception("float format mismatch!");
     }
   }
 

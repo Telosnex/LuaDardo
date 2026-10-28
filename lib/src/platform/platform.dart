@@ -5,6 +5,7 @@
 ///
 /// On native platforms (VM), uses dart:io for file operations.
 /// On web platforms, provides stub implementations.
+library;
 
 import 'dart:typed_data';
 

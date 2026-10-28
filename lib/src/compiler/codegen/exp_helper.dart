@@ -8,7 +8,7 @@ class ExpHelper {
   }
 
   static List<Exp?> removeTailNils(List<Exp?> exps) {
-    while (!exps.isEmpty) {
+    while (exps.isNotEmpty) {
       if (exps[exps.length - 1] is NilExp) {
         exps.removeAt(exps.length - 1);
       } else {

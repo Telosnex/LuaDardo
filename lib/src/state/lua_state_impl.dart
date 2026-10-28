@@ -139,7 +139,7 @@ class LuaStateImpl implements LuaState, LuaVM {
       final first = pair ~/ opCodes.length;
       final second = pair % opCodes.length;
       out.writeln(
-          '  ${(opCodes[first].name + ' → ' + opCodes[second].name).padRight(25)} '
+          '  ${('${opCodes[first].name} → ${opCodes[second].name}').padRight(25)} '
           '${formatCount(count, pairTotal)}');
     }
     final luaCalls = _registerLuaCallCounts.entries.toList()
@@ -228,8 +228,7 @@ class LuaStateImpl implements LuaState, LuaVM {
   }
 
   /// Constructor for creating a new thread (coroutine) that shares the registry
-  LuaStateImpl.newThread(LuaTable registry) {
-    this.registry = registry;
+  LuaStateImpl.newThread(LuaTable this.registry) {
     LuaStack stack = _newStack();
     stack.state = this;
     _pushLuaStack(stack);
@@ -245,13 +244,13 @@ class LuaStateImpl implements LuaState, LuaVM {
 
   /// 压入调用栈帧
   void _pushLuaStack(LuaStack newTop) {
-    newTop.prev = this._stack;
-    this._stack = newTop;
+    newTop.prev = _stack;
+    _stack = newTop;
   }
 
   void _popLuaStack() {
-    LuaStack top = this._stack!;
-    this._stack = top.prev;
+    LuaStack top = _stack!;
+    _stack = top.prev;
     top.prev = null;
   }
 
@@ -285,14 +284,12 @@ class LuaStateImpl implements LuaState, LuaVM {
 
   Object? _getMetafield(Object? val, String fieldName) {
     LuaTable? mt = _getMetatable(val);
-    return mt != null ? mt.get(fieldName) : null;
+    return mt?.get(fieldName);
   }
 
   Object? getMetamethod(Object? a, Object? b, String mmName) {
     Object? mm = _getMetafield(a, mmName);
-    if (mm == null) {
-      mm = _getMetafield(b, mmName);
-    }
+    mm ??= _getMetafield(b, mmName);
     return mm;
   }
 
@@ -466,7 +463,7 @@ class LuaStateImpl implements LuaState, LuaVM {
   @override
   int toInteger(int idx) {
     int? i = toIntegerX(idx);
-    return i == null ? 0 : i;
+    return i ?? 0;
   }
 
   @override
@@ -490,7 +487,7 @@ class LuaStateImpl implements LuaState, LuaVM {
   @override
   double toNumber(int idx) {
     double? n = toNumberX(idx);
-    return n == null ? 0 : n;
+    return n ?? 0;
   }
 
   @override
@@ -1076,7 +1073,9 @@ class LuaStateImpl implements LuaState, LuaVM {
           if (c != 0) pc++;
           break;
         case 4: // LOADNIL
-          for (int i = a; i <= a + b; i++) registers[i] = null;
+          for (int i = a; i <= a + b; i++) {
+            registers[i] = null;
+          }
           break;
         case 7: // GETTABLE
           if (registers[b] is! VirtualSmallTableMarker) {
@@ -1190,7 +1189,7 @@ class LuaStateImpl implements LuaState, LuaVM {
         nResults == 1) {
       final result = _executeVirtualTripleConsumer(
           value.proto!,
-          (marker as VirtualSmallTableMarker).length,
+          (marker).length,
           caller.slots[base + 2],
           caller.slots[base + 3],
           caller.slots[base + 4]);
@@ -1215,7 +1214,7 @@ class LuaStateImpl implements LuaState, LuaVM {
       }
       if (consumeVirtualTriple) {
         callee.virtualSmallTableLength =
-            (marker as VirtualSmallTableMarker).length;
+            (marker).length;
         callee.virtualTriple1 = caller.slots[base + 2];
         callee.virtualTriple2 = caller.slots[base + 3];
         callee.virtualTriple3 = caller.slots[base + 4];
@@ -1834,7 +1833,7 @@ class LuaStateImpl implements LuaState, LuaVM {
         : Compiler.compile(utf8.decode(chunk), chunkName);
     Closure closure = Closure(proto);
     _stack!.push(closure);
-    if (proto.upvalues.length > 0) {
+    if (proto.upvalues.isNotEmpty) {
       Object? env = registry!.get(luaRidxGlobals);
       closure.upvals[0] = UpvalueHolder.value(env); // todo
     }
@@ -2034,7 +2033,7 @@ class LuaStateImpl implements LuaState, LuaVM {
       return ThreadStatus.luaOk;
     } catch (e) {
       if (msgh != 0) {
-        throw e;
+        rethrow;
       }
       while (_stack != caller) {
         _popLuaStack();
@@ -2114,7 +2113,7 @@ class LuaStateImpl implements LuaState, LuaVM {
     } else {
       typeArg = typeName2(arg); /* standard name */
     }
-    String msg = tname + " expected, got " + typeArg!;
+    String msg = "$tname expected, got ${typeArg!}";
     pushString(msg);
     argError(arg, msg);
   }
@@ -2262,7 +2261,7 @@ class LuaStateImpl implements LuaState, LuaVM {
       if (bytes == null) {
         return ThreadStatus.luaErrFile;
       }
-      return load(bytes, "@" + filename, mode);
+      return load(bytes, "@$filename", mode);
     } catch (e, s) {
       // ignore: avoid_print
       print(e);
@@ -2450,29 +2449,32 @@ class LuaStateImpl implements LuaState, LuaVM {
     return true;
   }
 
+  @override
   int ref(int t) {
-    int _ref;
+    int refIndex;
     if (isNil(-1)) {
       pop(1); /* remove from stack */
       return -1; /* 'nil' has a unique fixed reference */
     }
     t = absIndex(t);
     rawGetI(t, 0); /* get first free element */
-    _ref = toInteger(-1); /* ref = t[freelist] */
+    refIndex = toInteger(-1); /* ref = t[freelist] */
     pop(1); /* remove it from stack */
-    if (_ref != 0) {
+    if (refIndex != 0) {
       /* any free element? */
-      rawGetI(t, _ref); /* remove it from list */
+      rawGetI(t, refIndex); /* remove it from list */
       rawSetI(t, 0); /* (t[freelist] = t[ref]) */
-    } else
+    } else {
       /* no free elements */
-      _ref = rawLen(t) + 1;
+      refIndex = rawLen(t) + 1;
+    }
     /* get a new reference */
 
-    rawSetI(t, _ref);
-    return _ref;
+    rawSetI(t, refIndex);
+    return refIndex;
   }
 
+  @override
   void unRef(int t, int ref) {
     if (ref >= 0) {
       t = absIndex(t);
@@ -2607,7 +2609,7 @@ class LuaStateImpl implements LuaState, LuaVM {
       int? uvIdx = uvInfo.idx;
       if (uvInfo.instack == 1) {
         if (_stack!.openuvs == null) {
-          _stack!.openuvs = Map<int?, UpvalueHolder?>();
+          _stack!.openuvs = <int?, UpvalueHolder?>{};
         }
         if (_stack!.openuvs!.containsKey(uvIdx)) {
           closure.upvals[i] = _stack!.openuvs![uvIdx];
@@ -2624,9 +2626,9 @@ class LuaStateImpl implements LuaState, LuaVM {
   @override
   void loadVararg(int n) {
     List<Object?>? varargs =
-        _stack!.varargs != null ? _stack!.varargs : const <Object>[];
+        _stack!.varargs ?? const <Object>[];
     if (n < 0) {
-      n = varargs!.length;
+      n = varargs.length;
     }
 
     //stack.check(n)
@@ -2645,8 +2647,9 @@ class LuaStateImpl implements LuaState, LuaVM {
         if (v!.index! >= a - 1) {
           v.migrate();
           return true;
-        } else
+        } else {
           return false;
+        }
       });
     }
   }

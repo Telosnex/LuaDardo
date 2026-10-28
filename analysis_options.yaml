@@ -6,3 +6,6 @@ linter:
     prefer_final_locals: false
     prefer_const_constructors: false
     avoid_print: false  # We use print in some places intentionally
+    # Names follow Lua's C sources (OP_MOVE, LUA_TNIL, luaL_checkinteger).
+    constant_identifier_names: false
+    non_constant_identifier_names: false

@@ -117,9 +117,9 @@ class StatParser {
     // Opt: pre-size the lists with the mandatory first branch so we
     // skip one grow-and-add per if-stat. Most ifs have 1–3 branches
     // total.
-    final List<Exp> exps = useOptimized ? <Exp>[firstExp] : (<Exp>[]..add(firstExp));
+    final List<Exp> exps = useOptimized ? <Exp>[firstExp] : (<Exp>[firstExp]);
     final List<Block> blocks =
-        useOptimized ? <Block>[firstBlock] : (<Block>[]..add(firstBlock));
+        useOptimized ? <Block>[firstBlock] : (<Block>[firstBlock]);
 
     while (lexer.LookAhead() == TokenKind.TOKEN_KW_ELSEIF) {
       lexer.nextToken();                    // elseif
@@ -157,7 +157,7 @@ class StatParser {
     var initExp = ExpParser.parseExp(lexer); // exp
     lexer.nextTokenOfKind(TokenKind.TOKEN_SEP_COMMA); // ,
     var limitExp = ExpParser.parseExp(lexer); // exp
-    var stepExp;
+    Exp stepExp;
     if (lexer.LookAhead() == TokenKind.TOKEN_SEP_COMMA) {
       lexer.nextToken(); // ,
       stepExp = ExpParser.parseExp(lexer); // exp
@@ -205,7 +205,7 @@ class StatParser {
     // namelist. For `local x` (no comma) this is the entire savings;
     // for `local x, y` it's still a win.
     final List<String> names =
-        useOptimized ? <String>[name0] : (<String>[]..add(name0));
+        useOptimized ? <String>[name0] : (<String>[name0]);
     while (lexer.LookAhead() == TokenKind.TOKEN_SEP_COMMA) {
       lexer.nextToken();                            // ,
       names.add(lexer.nextIdentifier().value); // Name
@@ -290,7 +290,7 @@ class StatParser {
     // literal allocation.
     final checked = checkVar(lexer, var0);
     final List<Exp> vars =
-        useOptimized ? <Exp>[checked] : (<Exp>[]..add(checked));
+        useOptimized ? <Exp>[checked] : (<Exp>[checked]);
     while (lexer.LookAhead() == TokenKind.TOKEN_SEP_COMMA) { // {
       lexer.nextToken();                         // ,
       Exp exp = PrefixExpParser.parsePrefixExp(lexer);           // var
@@ -358,7 +358,7 @@ class StatParser {
     }
 
     // workaround: return multiple values
-    return Map<Exp, bool>()..[exp] = hasColon;
+    return <Exp, bool>{}..[exp] = hasColon;
   }
 
   /// Tuned alternative for [parseFuncName]: returns a 2-tuple record

@@ -51,21 +51,21 @@ class MathLib{
   }
 
 
-  static var rng = new math.Random();
+  static var rng = math.Random();
 
   static int _random(LuaState ls) {
-    var low, up;
+    int low, up;
     switch(ls.getTop()){
       case 0:   /* no arguments */
         ls.pushNumber(rng.nextDouble()); /* Number between 0 and 1 */
         return 1;
       case 1:
         low = 1;
-        up = ls.checkInteger(1);
+        up = ls.checkInteger(1)!;
         break;
       case 2:
-        low = ls.checkInteger(1);
-        up = ls.checkInteger(2);
+        low = ls.checkInteger(1)!;
+        up = ls.checkInteger(2)!;
         break;
       default:
         return ls.error2("wrong number of arguments");
@@ -85,7 +85,7 @@ class MathLib{
 
   static int _randomseed(LuaState ls) {
     var x = ls.checkNumber(1)!;
-    rng = new math.Random(x.floor());
+    rng = math.Random(x.floor());
     return 0;
   }
 
@@ -124,7 +124,7 @@ class MathLib{
 
   static int _log(LuaState ls){
     var x = ls.checkNumber(1);
-    var res;
+    double res;
 
     if(ls.isNoneOrNil(2)){
       res = math.log(x!);
@@ -215,13 +215,13 @@ class MathLib{
 
   static int _fmod(LuaState ls) {
     if (ls.isInteger(1) && ls.isInteger(2)) {
-      var d = ls.toInteger(2)!;
+      var d = ls.toInteger(2);
       if (d == 0) {
         ls.argCheck(false, 2, "zero");
         return 0;
       }
       // math.fmod uses truncation remainder, not floor remainder.
-      ls.pushInteger(ls.toInteger(1)!.remainder(d));
+      ls.pushInteger(ls.toInteger(1).remainder(d));
     } else {
       var x = ls.checkNumber(1)!;
       var y = ls.checkNumber(2)!;
@@ -249,7 +249,7 @@ class MathLib{
 
   static int _abs(LuaState ls){
     if (ls.isInteger(1)){
-      var x = ls.toInteger(1)!;
+      var x = ls.toInteger(1);
       ls.pushInteger(x < 0 ? -x : x);
     } else {
       var x = ls.checkNumber(1)!;

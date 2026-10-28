@@ -7,8 +7,6 @@ import 'token.dart';
 // Named so the jump-table switch in [_nextTokenFast] reads cleanly.
 const int _chLF = 10;
 const int _chCR = 13;
-const int _chSpace = 32;
-const int _chBang = 33;
 const int _chQuote = 34;    // "
 const int _chHash = 35;     // #
 const int _chPercent = 37;  // %
@@ -55,9 +53,9 @@ class Lexer {
   Token? cachedNextToken;
   int? lineBackup;
 
-  StringBuffer _buff = StringBuffer();
+  final StringBuffer _buff = StringBuffer();
 
-  Lexer(this.chunk,this.chunkName):this.line=1;
+  Lexer(this.chunk,this.chunkName):line=1;
 
   TokenKind LookAhead() {
     if (cachedNextToken == null) {
@@ -184,9 +182,11 @@ class Lexer {
         int sep = _skip_sep();
         if (sep >= 0) {
           return Token(line, TokenKind.TOKEN_STRING, readLongString(true, sep));
-        } else if (sep == -1)
+        } else if (sep == -1) {
           return Token(line, TokenKind.TOKEN_SEP_LBRACK, "[");
-        else error("invalid long string delimiter");
+        } else {
+          error("invalid long string delimiter");
+        }
 
         break;
       case '\'':
@@ -545,7 +545,9 @@ class Lexer {
                   pendingBytes.add(int.parse(hex, radix: 16));
                   chunk.next(3);
                   continue;
-                }else error("hexadecimal digit expected");
+                }else {
+                  error("hexadecimal digit expected");
+                }
                 break;
               case 'u': // '\u{XXX}'
                 _flushPendingBytes(pendingBytes);
@@ -553,7 +555,9 @@ class Lexer {
                 if(chunk.current != '{') error("missing '{'");
 
                 int j = 1;
-                while(CharSequence.isxDigit(chunk.charAt(j))) j++;
+                while(CharSequence.isxDigit(chunk.charAt(j))) {
+                  j++;
+                }
 
                 if(chunk.charAt(j) != '}') error("missing '}'");
                 var seq = chunk.substring(1, j);
@@ -561,7 +565,9 @@ class Lexer {
                 if (d <= 0x10FFFF) {
                   _save_c(d);
                   chunk.next(j+1);
-                }else error("UTF-8 value too large near '$seq'");
+                }else {
+                  error("UTF-8 value too large near '$seq'");
+                }
                 continue;
               case '\n': case '\r':
                 _flushPendingBytes(pendingBytes);
@@ -579,8 +585,11 @@ class Lexer {
                 chunk.next(1);
                 while (chunk.length > 0 &&
                     CharSequence.isWhiteSpace(chunk.current)) {
-                  if(CharSequence.isNewLine(chunk.current)) _incLineNumber();
-                  else chunk.next(1);
+                  if(CharSequence.isNewLine(chunk.current)) {
+                    _incLineNumber();
+                  } else {
+                    chunk.next(1);
+                  }
                 }
                 continue;
               default:
@@ -615,8 +624,10 @@ class Lexer {
 
   String readLongString(bool isString, int sep) {
     _save_and_next(); /* skip 2nd `[' */
-    if (CharSequence.isNewLine(chunk.current)) /* string starts with a newline? */
+    if (CharSequence.isNewLine(chunk.current)) {
+      /* string starts with a newline? */
       _incLineNumber();
+    }
     /* skip it */
     loop:
     for (;;) {
@@ -639,10 +650,11 @@ class Lexer {
           if (!isString) _buff.clear();
           break;
         default:
-          if (isString)
+          if (isString) {
             _save_and_next();
-          else
+          } else {
             chunk.next(1);
+          }
       }
     }
     /* loop */
@@ -650,8 +662,9 @@ class Lexer {
       var rawToken = _buff.toString();
       int trim_by = 2 + sep;
       return rawToken.substring(trim_by, rawToken.length - trim_by);
-    } else
+    } else {
       return '';
+    }
   }
 
   int _skip_sep() {

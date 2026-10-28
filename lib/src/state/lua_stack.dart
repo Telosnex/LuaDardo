@@ -326,7 +326,7 @@ class LuaStack {
   }
 
   void reverse(int from, int to) {
-    var obj;
+    Object? obj;
     for (; from < to; from++, to--) {
       obj = slots[from];
       slots[from] = slots[to];
@@ -343,7 +343,7 @@ class LuaStack {
   }
 
   void _grow(int needed) {
-    int newCap = slots.length == 0 ? _minCapacity : slots.length;
+    int newCap = slots.isEmpty ? _minCapacity : slots.length;
     do {
       newCap *= 2;
     } while (newCap < needed);

@@ -5,7 +5,7 @@ class UpvalueHolder {
   LuaStack? stack;
   Object? value;
 
-  UpvalueHolder.value(this.value) : this.index = 0;
+  UpvalueHolder.value(this.value) : index = 0;
 
   UpvalueHolder(this.stack, this.index);
 

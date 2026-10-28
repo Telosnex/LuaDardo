@@ -1,4 +1,3 @@
-import '../stdlib/constants.dart' if (dart.library.html) '../stdlib/constants_js.dart';
 
 class LuaMath {
 

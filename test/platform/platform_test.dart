@@ -1,5 +1,4 @@
 import 'package:lua_dardo_plus/lua.dart';
-import 'package:lua_dardo_plus/src/platform/platform.dart';
 import 'package:test/test.dart';
 
 void main() {

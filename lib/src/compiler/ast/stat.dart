@@ -112,9 +112,7 @@ class LocalVarDeclStat extends Stat {
   List<String> nameList;
   List<Exp> expList;
 
-  LocalVarDeclStat(int lastLine, List<String> nameList, List<Exp> expList)
-      : this.nameList = nameList,
-        this.expList = expList{
+  LocalVarDeclStat(int lastLine, this.nameList, this.expList){
     super.lastLine = lastLine;
   }
 }

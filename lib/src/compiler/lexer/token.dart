@@ -65,7 +65,7 @@ enum TokenKind {
 }
 
 
-const Map keywords = const <String, TokenKind>{
+const Map keywords = <String, TokenKind>{
   "and": TokenKind.TOKEN_OP_AND,
   "break": TokenKind.TOKEN_KW_BREAK,
   "do": TokenKind.TOKEN_KW_DO,

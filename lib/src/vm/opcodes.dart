@@ -82,7 +82,7 @@ class OpCode {
 }
 
 /// Instruction List
-const opCodes = const <OpCode>[
+const opCodes = <OpCode>[
   /*     T  A    B       C     mode         name    */
   OpCode(0, 1, OpArgMask.OpArgR, OpArgMask.OpArgN, OpMode.iABC , "MOVE",Instructions.move), // R(A) := R(B)
   OpCode(0, 1, OpArgMask.OpArgK, OpArgMask.OpArgN, OpMode.iABx , "LOADK",Instructions.loadK), // R(A) := Kst(Bx)

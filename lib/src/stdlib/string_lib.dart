@@ -494,7 +494,9 @@ class StringLib {
           break;
         case 'z':
           var end = offset;
-          while (end < bytes.length && bytes[end] != 0) end++;
+          while (end < bytes.length && bytes[end] != 0) {
+            end++;
+          }
           ls.pushString(utf8.decode(bytes.sublist(offset, end)));
           offset = end + 1; // skip null terminator
           nResults++;
@@ -516,7 +518,7 @@ class StringLib {
 // http://www.lua.org/manual/5.3/manual.html#pdf-string.format
   static int _strFormat(LuaState ls) {
     var fmtStr = ls.checkString(1)!;
-    if (fmtStr.length <= 1 || fmtStr.indexOf('%') < 0) {
+    if (fmtStr.length <= 1 || !fmtStr.contains('%')) {
       ls.pushString(fmtStr);
       return 1;
     }
@@ -656,7 +658,7 @@ class StringLib {
   }
 
   static List<String?> parseFmtStr(String fmt) {
-    if (fmt == "" || fmt.indexOf('%') < 0) {
+    if (fmt == "" || !fmt.contains('%')) {
       return [fmt];
     }
 
@@ -712,13 +714,13 @@ class StringLib {
       case 'c': // character
         return String.fromCharCode(ls.toInteger(argIdx));
       case 'i':
-        tag = tag.substring(0, tag.length - 1) + "d"; // %i -> %d
+        tag = "${tag.substring(0, tag.length - 1)}d"; // %i -> %d
         return sprintf(tag, [ls.toInteger(argIdx)]);
       case 'd':
       case 'o': // integer, octal
         return sprintf(tag, [ls.toInteger(argIdx)]);
       case 'u': // unsigned integer
-        tag = tag.substring(0, tag.length - 1) + "d"; // %u -> %d
+        tag = "${tag.substring(0, tag.length - 1)}d"; // %u -> %d
         return sprintf(tag, [ls.toInteger(argIdx)]);
       case 'x':
       case 'X': // hex integer

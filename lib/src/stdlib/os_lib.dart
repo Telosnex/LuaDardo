@@ -1,5 +1,4 @@
 import '../../lua.dart';
-import '../platform/platform.dart';
 
 class OSLib {
   /// Monotonic stopwatch started on first use, approximating CPU time.
@@ -94,7 +93,7 @@ class OSLib {
     var format = ls.optString(1, "%c")!;
     DateTime t;
     if (ls.isInteger(2)) {
-      t = DateTime.fromMillisecondsSinceEpoch(ls.toInteger(2)! * 1000);
+      t = DateTime.fromMillisecondsSinceEpoch(ls.toInteger(2) * 1000);
     } else {
       t = DateTime.now();
     }
@@ -188,8 +187,11 @@ class OSLib {
   static int _getYearDay(DateTime date){
     var monthDay = [31,28,31,30,31,30,31,31,30,31,30,31];
 
-    if(date.year%4==0 && date.year%100!=0) monthDay[1] = 29;
-    else if(date.year%400==0) monthDay[1] = 29;
+    if(date.year%4==0 && date.year%100!=0) {
+      monthDay[1] = 29;
+    } else if(date.year%400==0) {
+      monthDay[1] = 29;
+    }
 
     int sum=0;
     for(var i = 0;i<=date.month-2;i++){

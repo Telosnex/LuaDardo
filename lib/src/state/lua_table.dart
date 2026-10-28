@@ -55,9 +55,7 @@ class LuaTable {
     if (key is int) {
       int idx = key;
       if (idx >= 1) {
-        if (arr == null) {
-          arr = <Object?>[];
-        }
+        arr ??= <Object?>[];
 
         int arrLen = arr!.length;
         if (idx <= arrLen) {
@@ -81,9 +79,7 @@ class LuaTable {
     }
 
     if (val != null) {
-      if (map == null) {
-        map = HashMap<Object?, Object>();
-      }
+      map ??= HashMap<Object?, Object>();
       map![key] = val;
     } else {
       if (map != null) {
@@ -143,7 +139,7 @@ class LuaTable {
     } else {
       keys!.clear();
     }
-    Object? key = null;
+    Object? key;
     if (arr != null) {
       for (int i = 0; i < arr!.length; i++) {
         if (arr![i] != null) {

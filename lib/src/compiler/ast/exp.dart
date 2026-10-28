@@ -57,7 +57,7 @@ class FloatExp extends Exp {
 class StringExp extends Exp {
   String str;
 
-  StringExp.fromToken(Token token) : this.str = token.value {
+  StringExp.fromToken(Token token) : str = token.value {
     super.line = token.line;
   }
 

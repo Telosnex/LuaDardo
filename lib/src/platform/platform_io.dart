@@ -1,6 +1,7 @@
 /// Native platform implementation using dart:io.
 ///
 /// This file is only imported on native platforms (VM).
+library;
 
 import 'dart:io' as io;
 import 'dart:typed_data';
