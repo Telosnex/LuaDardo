@@ -280,6 +280,13 @@ class StatProcessor {
   }
 
   static void processLocalVarDeclStat(FuncInfo fi, LocalVarDeclStat node) {
+    // The parser reads Lua 5.4 attributes for static analysis
+    // (lua_parser.dart); this VM is Lua 5.3 and does not implement them.
+    // Refuse them, rather than run <close> without its __close.
+    if (node.attribList != null) {
+      throw Exception('local variable attributes (<const>, <close>) are '
+          'Lua 5.4; this VM is Lua 5.3');
+    }
     List<Exp?> exps = ExpHelper.removeTailNils(node.expList);
     int nExps = exps.length;
     int nNames = node.nameList.length;

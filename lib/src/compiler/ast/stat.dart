@@ -108,11 +108,19 @@ class ForInStat extends Stat {
       required this.block});
 }
 
+/// The attribute of a local variable (Lua 5.4): `local x <const>`,
+/// `local f <close>`.
+enum LocalAttrib { const_, close }
+
 class LocalVarDeclStat extends Stat {
   List<String> nameList;
   List<Exp> expList;
 
-  LocalVarDeclStat(int lastLine, this.nameList, this.expList) {
+  /// The attribute of each name in [nameList], or null if no name has one.
+  List<LocalAttrib?>? attribList;
+
+  LocalVarDeclStat(int lastLine, this.nameList, this.expList,
+      [this.attribList]) {
     super.lastLine = lastLine;
   }
 }

@@ -258,10 +258,32 @@ class StatParser {
     return LocalFuncDefStat(name, fdExp);
   }
 
-  // local namelist [‘=’ explist]
+  // local attnamelist [‘=’ explist]
+  // attnamelist ::= Name attrib {‘,’ Name attrib}
+  // attrib ::= [‘<’ Name ‘>’]
   static LocalVarDeclStat finishLocalVarDeclStat(Lexer lexer) {
     String name0 = lexer.nextIdentifier().value; // local Name
-    List<String> nameList = finishNameList(lexer, name0); // { , Name }
+    final List<String> nameList = <String>[name0];
+    List<LocalAttrib?>? attribList;
+    var attrib = _parseAttrib(lexer);
+    if (attrib != null) attribList = <LocalAttrib?>[attrib];
+    var closes = attrib == LocalAttrib.close ? 1 : 0;
+    while (lexer.LookAhead() == TokenKind.TOKEN_SEP_COMMA) {
+      lexer.nextToken(); // ,
+      nameList.add(lexer.nextIdentifier().value); // Name
+      attrib = _parseAttrib(lexer);
+      if (attrib != null) {
+        attribList ??= List<LocalAttrib?>.filled(
+          nameList.length - 1,
+          null,
+          growable: true,
+        );
+        if (attrib == LocalAttrib.close && ++closes > 1) {
+          lexer.error('multiple to-be-closed variables in local list');
+        }
+      }
+      attribList?.add(attrib);
+    }
     List<Exp>? expList;
     if (lexer.LookAhead() == TokenKind.TOKEN_OP_ASSIGN) {
       lexer.nextToken(); // ==
@@ -272,7 +294,28 @@ class StatParser {
     // `List<Exp>.empty()` on every `local x` without initializer.
     // `parseRetExps` in block_parser.dart already does this.
     final fallback = useOptimized ? const <Exp>[] : List<Exp>.empty();
-    return LocalVarDeclStat(lastLine, nameList, expList ?? fallback);
+    return LocalVarDeclStat(
+      lastLine,
+      nameList,
+      expList ?? fallback,
+      attribList,
+    );
+  }
+
+  // attrib ::= [‘<’ Name ‘>’], as in lparser.c of Lua 5.4.
+  static LocalAttrib? _parseAttrib(Lexer lexer) {
+    if (lexer.LookAhead() != TokenKind.TOKEN_OP_LT) return null;
+    lexer.nextToken(); // <
+    final name = lexer.nextIdentifier().value;
+    lexer.nextTokenOfKind(TokenKind.TOKEN_OP_GT); // >
+    switch (name) {
+      case 'const':
+        return LocalAttrib.const_;
+      case 'close':
+        return LocalAttrib.close;
+      default:
+        return lexer.error("unknown attribute '$name'");
+    }
   }
 
   // varlist ‘=’ explist
